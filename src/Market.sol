@@ -30,10 +30,12 @@ contract Market {
 
     // Mapping for bids on listings
     mapping(uint256 => Bid[]) public listingBids;
+    // ListingID => Address to get position value for listingBids[] since is array for fast caching
     mapping(uint256 => mapping(address => uint256)) public bidderIndex;
     // Mapping to store Unique Worldcoin users
     // user to their keys as bool
     mapping(address => string) public walletToPublicKey;
+    // Save gas usdc address will nvr change in the chain, unless something goes wrong
     IERC20 public immutable USDCTOKEN;
 
     event ListingCreated(
