@@ -25,10 +25,11 @@ contract MarketTest is Test {
 
         // Deploy the Market contract
         market = new Market(address(usdcToken));
-
+        bytes32 user1WorldIDHash = keccak256(abi.encodePacked("User1WorldID")); // Mock worldIDHash for testing
+        bytes32 user2WorldIDHash = keccak256(abi.encodePacked("User2WorldID")); // Mock worldIDHash for testing
         // Admin adds authorized users
-        market.addAuthorizedUser(user1, "User1PublicKey");
-        market.addAuthorizedUser(user2, "User2PublicKey");
+        market.addAuthorizedUser(user1, "User1PublicKey", user1WorldIDHash);
+        market.addAuthorizedUser(user2, "User2PublicKey", user2WorldIDHash);
     }
 
     // Test adding a new listing
@@ -148,7 +149,65 @@ contract MarketTest is Test {
         uint256 sellerBalance = usdcToken.balanceOf(user1);
         assertEq(sellerBalance, 98 * 10 ** 6); // Seller should receive 98 USDC after the 2% fee
     }
+
     // Test cancelling a bid
 
     // Test raising a dispute
+    function testDispute() public {
+        // User1 creates a listing
+        vm.prank(user1);
+        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+
+        // User2 approves the Market contract to spend their USDC
+        vm.prank(user2);
+        usdcToken.mint(user2, 100000 * 10 ** 6); // Mint 100000 USDC to user2
+        vm.prank(user2);
+        usdcToken.approve(address(market), 100 * 10 ** 6);
+        vm.prank(user2);
+        market.bidForListing(0, 100 * 10 ** 6, "Test address");
+
+        vm.prank(user2);
+        market.raiseDispute(0);
+        (
+            uint256 itemIdAfterDispute,
+            address sellerAfterDispute,
+            uint256 priceAfterDispute,
+            string memory ipfsLinkAfterDispute,
+            uint8 listingStatusAfterDispute,
+            address buyerAfterDispute,
+            string memory encryptedBuyerAddressAfterDispute,
+            uint256 blockTimestampForDisputeAfterDispute
+        ) = market.listings(0);
+
+        assertEq(
+            listingStatusAfterDispute,
+            3,
+            "Listing status should be 'in dispute' (3)"
+        );
+    }
+
+    // Dispute raise and admin came in to verify
+    function testResolveDispute() public {
+        testDispute();
+        uint256 initialSellerBalance = usdcToken.balanceOf(user1);
+        uint256 initialFeeCollected = market.totalFeeCollected();
+
+        vm.prank(admin); // Use the admin account to resolve the dispute
+        market.resolveDispute(0, true);
+        (
+            uint256 itemIdAfterResolveDispute,
+            address sellerAfterResolveDispute,
+            uint256 priceAfterResolveDispute,
+            string memory ipfsLinkAfterResolveDispute,
+            uint8 listingStatusAfterResolveDispute,
+            address buyerAfterResolveDispute,
+            string memory encryptedBuyerAddressAfterResolveDispute,
+            uint256 blockTimestampForDisputeAfterResolveDispute
+        ) = market.listings(0);
+        assertEq(
+            listingStatusAfterResolveDispute,
+            4,
+            "Listing status should be 'cancelled' 4 "
+        );
+    }
 }

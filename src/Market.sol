@@ -39,6 +39,9 @@ contract Market {
     // Mapping to store Unique Worldcoin users
     // user to their keys as bool
     mapping(address => string) public walletToPublicKey;
+    // Mapping of verified humans (proof) to wallet addresses and vice versa
+    mapping(bytes32 => address) public humanToWallet;
+    mapping(address => bytes32) public walletToHumanIDHash;
     // Save gas usdc address will nvr change in the chain, unless something goes wrong
     IERC20 public immutable USDCTOKEN;
     uint256 public feeBPS;
@@ -113,9 +116,16 @@ contract Market {
     // Add authorized user by admin
     function addAuthorizedUser(
         address _userAddress,
-        string memory _userPublicKey
+        string memory _userPublicKey,
+        bytes32 worldIDHash
     ) public onlyAdmin {
         walletToPublicKey[_userAddress] = _userPublicKey;
+        // Ensure the human is not already registered
+        require(humanToWallet[worldIDHash] == address(0), "Already registered");
+
+        // Map the verified human (worldIDHash) to the provided wallet
+        humanToWallet[worldIDHash] = _userAddress;
+        walletToHumanIDHash[_userAddress] = worldIDHash;
     }
 
     // Remove user
@@ -124,9 +134,13 @@ contract Market {
             bytes(walletToPublicKey[_userAddress]).length > 0,
             "User does not exist"
         );
+        // Get the worldIDHash associated with the user
+        bytes32 worldIDHash = walletToHumanIDHash[_userAddress];
 
         // Set the mapping entry back to the default value (empty string)
         walletToPublicKey[_userAddress] = "";
+        humanToWallet[worldIDHash] = address(0); // Set the address to 0
+        walletToHumanIDHash[_userAddress] = "";
     }
 
     // Edit listing by listing owner
