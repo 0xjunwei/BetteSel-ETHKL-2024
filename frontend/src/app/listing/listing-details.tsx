@@ -24,16 +24,16 @@ const erc20Abi = [
 ]
 
 interface ListingType {
-    itemId: string;
-    itemTitle: string;
-    seller: string;
-    price: string;
-    ipfsLink: string;
-    listingStatus: number;
-    buyer: string;
-    encryptedBuyerAddress: string;
-    blockTimestampForDispute: string;
-  }
+  itemId: string;
+  itemTitle: string;
+  seller: string;
+  price: string;
+  ipfsLink: string;
+  listingStatus: number;
+  buyer: string;
+  encryptedBuyerAddress: string;
+  blockTimestampForDispute: string;
+}
 
 export default function ListingDetails() {
   const [listing, setListing] = useState<ListingType | null>(null)
@@ -47,7 +47,7 @@ export default function ListingDetails() {
   const [sellerPublicKey, setSellerPublicKey] = useState('')
 
   const searchParams = useSearchParams()
-  const listingId = searchParams.get('id')
+  const listingId = searchParams ? searchParams.get('id') : null
 
   useEffect(() => {
     const fetchListingDetails = async () => {
@@ -108,7 +108,11 @@ export default function ListingDetails() {
       setError('')
       setSuccess('')
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
       await provider.send("eth_requestAccounts", [])
       const signer = provider.getSigner()
       const usdcContract = new ethers.Contract(usdcTokenAddress, erc20Abi, signer)
@@ -152,16 +156,25 @@ export default function ListingDetails() {
       setSuccess('Bid placed successfully!')
       setBidAmount('')
       setEncryptedAddress('')
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error placing bid:', err)
-      if (err.code === 4001) {
-        setError('Transaction was rejected by the user.')
-      } else if (err.code === -32603) {
-        setError('Internal error. Please check your wallet balance and try again.')
-      } else if (err.message.includes('UNPREDICTABLE_GAS_LIMIT')) {
-        setError('Unable to estimate gas. The transaction might fail or the contract might be paused. Please try again later or contact support.')
+      if (typeof err === 'object' && err !== null) {
+        if ('code' in err && typeof err.code === 'number') {
+          if (err.code === 4001) {
+            setError('Transaction was rejected by the user.')
+          } else if (err.code === -32603) {
+            setError('Internal error. Please check your wallet balance and try again.')
+          }
+        }
+        if ('message' in err && typeof err.message === 'string') {
+          if (err.message.includes('UNPREDICTABLE_GAS_LIMIT')) {
+            setError('Unable to estimate gas. The transaction might fail or the contract might be paused. Please try again later or contact support.')
+          } else {
+            setError(`Failed to place bid: ${err.message}`)
+          }
+        }
       } else {
-        setError(`Failed to place bid: ${err.message || 'Unknown error'}`)
+        setError('An unknown error occurred. Please try again.')
       }
     } finally {
       setLoading(false)
@@ -193,7 +206,7 @@ export default function ListingDetails() {
             <Input id="seller" value={listing.seller} readOnly />
           </div>
           <div>
-            <Label htmlFor="sellerPublicKey">Seller's Public Key</Label>
+            <Label htmlFor="sellerPublicKey">Seller&apos;s Public Key</Label>
             <Input id="sellerPublicKey" value={sellerPublicKey} readOnly />
           </div>
           <div>

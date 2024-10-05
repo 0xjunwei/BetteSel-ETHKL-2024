@@ -12,20 +12,19 @@ const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
 
 const usdcAbi = [
   "function mint(address to, uint256 amount) public",
-  "function balanceOf(address account) public view returns (uint256)",
-  "function decimals() public view returns (uint8)"
+  "function balanceOf(address account) public view returns (uint256)"
 ]
 
-export default function Faucet() {
+export default function USDCFaucet() {
   const [amount, setAmount] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [balance, setBalance] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const mintTokens = async () => {
+  const handleMint = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!amount) {
-      setError('Please enter an amount to mint.')
+      setError('Please enter an amount')
       return
     }
 
@@ -34,97 +33,76 @@ export default function Faucet() {
       setError('')
       setSuccess('')
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
       await provider.send("eth_requestAccounts", [])
       const signer = provider.getSigner()
       const usdcContract = new ethers.Contract(usdcTokenAddress, usdcAbi, signer)
 
-      const decimals = await usdcContract.decimals()
-      const mintAmount = ethers.utils.parseUnits(amount, decimals)
-
-      const tx = await usdcContract.mint(await signer.getAddress(), mintAmount)
+      const amountInWei = ethers.utils.parseUnits(amount, 6) // USDC has 6 decimal places
+      const tx = await usdcContract.mint(await signer.getAddress(), amountInWei)
       await tx.wait()
 
-      setSuccess(`Successfully minted ${amount} USDC tokens!`)
-      setAmount('')
+      const balance = await usdcContract.balanceOf(await signer.getAddress())
+      const balanceInUSDC = ethers.utils.formatUnits(balance, 6)
 
-      // Update balance
-      const newBalance = await usdcContract.balanceOf(await signer.getAddress())
-      setBalance(ethers.utils.formatUnits(newBalance, decimals))
+      setSuccess(`Successfully minted ${amount} USDC. Your new balance is ${balanceInUSDC} USDC.`)
+      setAmount('')
     } catch (err) {
-      console.error(err)
-      setError('Failed to mint tokens. Please try again.')
+      console.error('Error minting USDC:', err)
+      if (err instanceof Error) {
+        setError(`Failed to mint USDC: ${err.message}`)
+      } else {
+        setError('An unknown error occurred. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const updateBalance = async () => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
-      await provider.send("eth_requestAccounts", [])
-      const signer = provider.getSigner()
-      const usdcContract = new ethers.Contract(usdcTokenAddress, usdcAbi, signer)
-
-      const decimals = await usdcContract.decimals()
-      const balance = await usdcContract.balanceOf(await signer.getAddress())
-      setBalance(ethers.utils.formatUnits(balance, decimals))
-    } catch (err) {
-      console.error(err)
-      setError('Failed to fetch balance. Please try again.')
-    }
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>USDC Faucet</CardTitle>
-          <CardDescription>Mint USDC tokens for testing purposes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="amount">Amount to Mint (USDC)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.000001"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount of USDC to mint"
-              />
-            </div>
-            {balance && (
-              <div>
-                <Label>Your USDC Balance</Label>
-                <Input value={balance} readOnly />
-              </div>
-            )}
-            {error && (
-              <Alert variant="destructive">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {success && (
-              <Alert>
-                <AlertTitle>Success</AlertTitle>
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
+    <Card className="w-full max-w-md mx-auto mt-8">
+      <CardHeader>
+        <CardTitle>USDC Faucet</CardTitle>
+        <CardDescription>Mint USDC tokens for testing purposes</CardDescription>
+      </CardHeader>
+      <form onSubmit={handleMint}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount (USDC)</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.000001"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Enter amount to mint"
+              required
+            />
           </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert>
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button onClick={mintTokens} disabled={loading}>
-            {loading ? 'Minting...' : 'Mint Tokens'}
-          </Button>
-          <Button onClick={updateBalance} variant="outline">
-            Update Balance
+        <CardFooter>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Minting...' : 'Mint USDC'}
           </Button>
         </CardFooter>
-      </Card>
-    </div>
+      </form>
+    </Card>
   )
 }
