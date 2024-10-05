@@ -291,7 +291,7 @@ export default function ListingDetails() {
           ) : (
             <div>
               <Label htmlFor="encryptedBuyerAddress">Encrypted Buyer Address</Label>
-              <Input id="encryptedBuyerAddress" value={listing.encryptedBuyerAddress} readOnly />
+              <Input id="encryptedBuyerAddress" value={listing.encryptedBuyerAddress || 'Not available'} readOnly />
             </div>
           )}
           {error && (
