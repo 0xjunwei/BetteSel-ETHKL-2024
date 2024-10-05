@@ -156,6 +156,15 @@ export default function ListingDetails() {
       setSuccess('Bid placed successfully!')
       setBidAmount('')
       setEncryptedAddress('')
+      
+      // Refresh listing details after successful bid
+      const updatedListing = await marketContract.listings(listingId)
+      setListing({
+        ...listing,
+        listingStatus: updatedListing.listingStatus,
+        buyer: updatedListing.buyer,
+        encryptedBuyerAddress: updatedListing.encryptedBuyerAddress,
+      })
     } catch (err: unknown) {
       console.error('Error placing bid:', err)
       if (typeof err === 'object' && err !== null) {
@@ -215,7 +224,11 @@ export default function ListingDetails() {
           </div>
           <div>
             <Label htmlFor="status">Status</Label>
-            <Input id="status" value={listing.listingStatus === 0 ? 'Active' : 'Inactive'} readOnly />
+            <Input 
+              id="status" 
+              value={listing.listingStatus === 0 ? 'Active' : listing.listingStatus === 1 ? 'Pending Delivery' : 'Inactive'} 
+              readOnly 
+            />
           </div>
           <div>
             <Label>Item Image</Label>
@@ -250,27 +263,36 @@ export default function ListingDetails() {
               )}
             </div>
           </div>
-          <div>
-            <Label htmlFor="bidAmount">Your Bid Amount (USDC)</Label>
-            <Input
-              id="bidAmount"
-              type="number"
-              step="0.000001"
-              min="0"
-              value={bidAmount}
-              onChange={(e) => setBidAmount(e.target.value)}
-              placeholder="Enter bid amount in USDC"
-            />
-          </div>
-          <div>
-            <Label htmlFor="encryptedAddress">Your Encrypted Address</Label>
-            <Input
-              id="encryptedAddress"
-              value={encryptedAddress}
-              onChange={(e) => setEncryptedAddress(e.target.value)}
-              placeholder="Enter your encrypted address"
-            />
-          </div>
+          {listing.listingStatus === 0 ? (
+            <>
+              <div>
+                <Label htmlFor="bidAmount">Your Bid Amount (USDC)</Label>
+                <Input
+                  id="bidAmount"
+                  type="number"
+                  step="0.000001"
+                  min="0"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  placeholder="Enter bid amount in USDC"
+                />
+              </div>
+              <div>
+                <Label htmlFor="encryptedAddress">Your Encrypted Address</Label>
+                <Input
+                  id="encryptedAddress"
+                  value={encryptedAddress}
+                  onChange={(e) => setEncryptedAddress(e.target.value)}
+                  placeholder="Enter your encrypted address"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <Label htmlFor="encryptedBuyerAddress">Encrypted Buyer Address</Label>
+              <Input id="encryptedBuyerAddress" value={listing.encryptedBuyerAddress} readOnly />
+            </div>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertTitle>Error</AlertTitle>
@@ -286,9 +308,11 @@ export default function ListingDetails() {
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleBid} disabled={loading}>
-          {loading ? 'Placing Bid...' : 'Place Bid'}
-        </Button>
+        {listing.listingStatus === 0 && (
+          <Button onClick={handleBid} disabled={loading}>
+            {loading ? 'Placing Bid...' : 'Place Bid'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )
