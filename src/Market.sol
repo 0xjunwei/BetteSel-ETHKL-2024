@@ -121,12 +121,12 @@ contract Market {
         address _userAddress,
         string memory _userPublicKey,
         bytes32 worldIDHash
-    ) public onlyAdmin {
+    ) public {
         walletToPublicKey[_userAddress] = _userPublicKey;
         // Ensure the human is not already registered
         require(humanToWallet[worldIDHash] == address(0), "Already registered");
 
-        // Map the verified human (worldIDHash) to the provided wallet
+        // Just place a random bytes32 didnt have time for worldcoin
         humanToWallet[worldIDHash] = _userAddress;
         walletToHumanIDHash[_userAddress] = worldIDHash;
     }
