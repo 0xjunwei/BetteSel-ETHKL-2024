@@ -3,16 +3,15 @@
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from 'lucide-react'
 
 const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
 const abi = [
-  {"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
-  {"type":"function","name":"listingCount","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"}
+  {"type":"function","name":"listingCount","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},
+  {"type":"function","name":"listings","inputs":[{"name":"","type":"uint256"}],"outputs":[{"name":"itemId","type":"uint256"},{"name":"itemTitle","type":"string"},{"name":"seller","type":"address"},{"name":"price","type":"uint256"},{"name":"ipfsLink","type":"string"},{"name":"listingStatus","type":"uint8"},{"name":"buyer","type":"address"},{"name":"encryptedBuyerAddress","type":"string"},{"name":"blockTimestampForDispute","type":"uint256"}],"stateMutability":"view"}
 ]
 
 interface Listing {
@@ -20,7 +19,7 @@ interface Listing {
   itemTitle: string;
   seller: string;
   price: string;
-  listingStatus: number;
+  status: number;
 }
 
 const getStatusText = (status: number) => {
@@ -51,15 +50,17 @@ export default function ListingsPage() {
         const listingCount = await contract.listingCount()
         const fetchedListings: Listing[] = []
 
-        for (let i = 0; i < listingCount.toNumber(); i++) {
+        for (let i = 1; i <= listingCount.toNumber(); i++) {
           const listing = await contract.listings(i)
-          fetchedListings.push({
-            id: i.toString(),
-            itemTitle: listing.itemTitle,
-            seller: listing.seller,
-            price: ethers.utils.formatUnits(listing.price, 6),
-            listingStatus: listing.listingStatus
-          })
+          if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
+            fetchedListings.push({
+              id: listing.itemId.toString(),
+              itemTitle: listing.itemTitle,
+              seller: listing.seller,
+              price: ethers.utils.formatUnits(listing.price, 6),
+              status: listing.listingStatus
+            })
+          }
         }
 
         setListings(fetchedListings)
@@ -75,52 +76,33 @@ export default function ListingsPage() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-900">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-      </div>
-    )
+    return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
 
   if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-900">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-red-500">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-white">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>
   }
 
   return (
-    <div className="container mx-auto p-4 bg-gray-900 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-white">Available Listings</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Available Listings</h1>
       {listings.length === 0 ? (
-        <p className="text-white">No listings found.</p>
+        <p className="text-center text-gray-500">No listings available at the moment.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((listing) => (
             <Card key={listing.id} className="bg-gray-800 text-white">
               <CardHeader>
                 <CardTitle>{listing.itemTitle}</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Seller: {listing.seller.slice(0, 6)}...{listing.seller.slice(-4)}
-                </CardDescription>
               </CardHeader>
               <CardContent>
+                <p>Seller: {listing.seller.slice(0, 6)}...{listing.seller.slice(-4)}</p>
                 <p>Price: {listing.price} USDC</p>
-                <p>Status: {getStatusText(listing.listingStatus)}</p>
+                <p>Status: {getStatusText(listing.status)}</p>
               </CardContent>
               <CardFooter>
                 <Link href={`/listing/${listing.id}`} passHref>
-                  <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
-                    View Details
-                  </Button>
+                  <Button className="w-full">View Details</Button>
                 </Link>
               </CardFooter>
             </Card>
