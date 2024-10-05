@@ -233,32 +233,33 @@ export default function ListingDetails() {
           <div>
             <Label>Item Image</Label>
             <div className="mt-2 relative w-full h-64 bg-gray-100 rounded-md overflow-hidden">
-              {listing.ipfsLink && !imageError ? (
-                <>
-                  {imageLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-gray-500">Loading image...</span>
-                    </div>
-                  )}
-                  <Image
-                    src={listing.ipfsLink}
-                    alt={listing.itemTitle}
-                    fill
-                    style={{ objectFit: 'contain' }}
-                    onLoad={() => setImageLoading(false)}
-                    onError={() => {
-                      setImageError(true)
-                      setImageLoading(false)
-                    }}
-                    className={imageLoading ? 'hidden' : 'block'}
-                  />
-                </>
+              {listing.ipfsLink ? (
+                <Image
+                  src={listing.ipfsLink}
+                  alt={listing.itemTitle}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => {
+                    setImageError(true)
+                    setImageLoading(false)
+                  }}
+                />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
-                  <span className="text-gray-500">
-                    {imageError ? 'Failed to load image' : 'No image available'}
-                  </span>
+                  <span className="text-gray-500">No image available</span>
+                </div>
+              )}
+              {imageLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+                  <span className="text-gray-500">Loading image...</span>
+                </div>
+              )}
+              {imageError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
+                  <span className="text-gray-500">Failed to load image</span>
                 </div>
               )}
             </div>
