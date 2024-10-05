@@ -37,6 +37,8 @@ contract Market {
     mapping(address => string) public walletToPublicKey;
     // Save gas usdc address will nvr change in the chain, unless something goes wrong
     IERC20 public immutable USDCTOKEN;
+    uint256 public feeBPS;
+    uint256 public totalFeeCollected;
 
     event ListingCreated(
         uint256 _listingId,
@@ -68,6 +70,20 @@ contract Market {
     constructor(address _usdcToken) {
         USDCTOKEN = IERC20(_usdcToken);
         adminAccess[msg.sender] = true;
+        // Initial set to 2% BPS 200/10000
+        feeBPS = 200;
+    }
+
+    // Admin can set the fee (in basis points)
+    function setFee(uint256 _feeBPS) public onlyAdmin {
+        feeBPS = _feeBPS;
+    }
+
+    // Admin can withdraw the accumulated fees
+    function withdrawFees() public onlyAdmin {
+        uint256 amount = totalFeeCollected;
+        totalFeeCollected = 0; // Reset the fees
+        require(USDCTOKEN.transfer(msg.sender, amount), "Transfer failed");
     }
 
     // Create listing by authorized user
@@ -204,11 +220,15 @@ contract Market {
             "Only the buyer can release the payment"
         );
 
+        uint256 fee = (userListing.price * feeBPS) / 10000; // Calculate the 2% fee
+        uint256 sellerAmount = userListing.price - fee;
         // Transfer the payment from contract to the seller
         require(
-            USDCTOKEN.transfer(userListing.seller, userListing.price),
+            USDCTOKEN.transfer(userListing.seller, sellerAmount),
             "Payment transfer to seller failed"
         );
+        // Add the fee to the total fees
+        totalFeeCollected += fee;
         userListing.listingStatus = 3;
 
         // Sold item done :D
@@ -330,11 +350,14 @@ contract Market {
 
         // Ensure the listing is in dispute
         require(userListing.listingStatus == 3, "Listing is not in dispute");
+        uint256 fee = (userListing.price * feeBPS) / 10000; // Calculate the 2% fee
+        // Pay back the amount - fee as the feeBPS is used to cover admin charges and dispute charges
+        uint256 sendAmount = userListing.price - fee;
 
         // If the dispute is resolved in favor of the seller, transfer the funds to the seller
         if (sendToSeller) {
             require(
-                USDCTOKEN.transfer(userListing.seller, userListing.price),
+                USDCTOKEN.transfer(userListing.seller, sendAmount),
                 "Payment transfer to seller failed"
             );
             userListing.listingStatus = 4; // cancelled
@@ -342,10 +365,12 @@ contract Market {
         // If the dispute is resolved in favor of the buyer, refund the buyer
         else {
             require(
-                USDCTOKEN.transfer(userListing.buyer, userListing.price),
+                USDCTOKEN.transfer(userListing.buyer, sendAmount),
                 "Refund transfer to buyer failed"
             );
             userListing.listingStatus = 4; // cancelled
         }
+        // Add the fee to the total fees
+        totalFeeCollected += fee;
     }
 }
