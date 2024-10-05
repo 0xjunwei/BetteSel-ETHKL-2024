@@ -61,7 +61,7 @@ export default function ListingsPage() {
       const listingCount = await contract.listingCount()
       const fetchedListings: Listing[] = []
 
-      for (let i = 0; i <= listingCount.toNumber(); i++) {
+      for (let i = 0; i < listingCount.toNumber(); i++) {
         try {
           const listing = await contract.listings(i)
           // Remove the check for itemId !== 0
