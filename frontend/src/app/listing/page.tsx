@@ -51,7 +51,7 @@ export default function ListingsPage() {
         const listingCount = await contract.listingCount()
         const fetchedListings: Listing[] = []
 
-        for (let i = 1; i <= listingCount.toNumber(); i++) {
+        for (let i = 0; i < listingCount.toNumber(); i++) {
           const listing = await contract.listings(i)
           fetchedListings.push({
             id: i.toString(),
@@ -117,7 +117,7 @@ export default function ListingsPage() {
                 <p>Status: {getStatusText(listing.listingStatus)}</p>
               </CardContent>
               <CardFooter>
-                <Link href={`/listing/listing-details?id=${listing.id}`} passHref>
+                <Link href={`/listing?id=${listing.id}`} passHref>
                   <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
                     View Details
                   </Button>
