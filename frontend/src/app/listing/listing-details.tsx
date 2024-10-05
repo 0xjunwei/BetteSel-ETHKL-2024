@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
-import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,7 +14,7 @@ const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
 const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
-const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"submitProofOfDelivery","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"listingBids","inputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"outputs":[{"name":"bidder","type":"address","internalType":"address"},{"name":"bidAmount","type":"uint256","internalType":"uint256"},{"name":"encryptedBidderAddress","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"acceptBid","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidder","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"}]
+const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"submitProofOfDelivery","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"listingBids","inputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"outputs":[{"name":"bidder","type":"address","internalType":"address"},{"name":"bidAmount","type":"uint256","internalType":"uint256"},{"name":"encryptedBidderAddress","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"acceptBid","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidder","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"raiseDispute","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}]
 
 const erc20Abi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
@@ -53,7 +52,11 @@ const getStatusText = (status: number) => {
   }
 }
 
-export default function ListingDetails() {
+interface ListingDetailsProps {
+  id: string;
+}
+
+export default function ListingDetails({ id }: ListingDetailsProps) {
   const [listing, setListing] = useState<ListingType | null>(null)
   const [bids, setBids] = useState<BidType[]>([])
   const [bidAmount, setBidAmount] = useState('')
@@ -66,8 +69,7 @@ export default function ListingDetails() {
   const [sellerPublicKey, setSellerPublicKey] = useState('')
   const [userAddress, setUserAddress] = useState('')
 
-  const searchParams = useSearchParams()
-  const listingId = searchParams ? searchParams.get('id') : null
+  const listingId = id
 
   const fetchBids = async (contract: ethers.Contract, listingId: string) => {
     try {
@@ -407,6 +409,61 @@ export default function ListingDetails() {
     }
   }
 
+  const handleDisputeTransaction = async () => {
+    if (!listing || !listingId) {
+      setError('Listing information is missing.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
+      await provider.send("eth_requestAccounts", [])
+      const signer = provider.getSigner()
+      const marketContract = new ethers.Contract(contractAddress, abi, signer)
+
+      console.log('Raising dispute...')
+      const gasLimit = await marketContract.estimateGas.raiseDispute(listingId)
+      const tx = await marketContract.raiseDispute(listingId, {
+        gasLimit: gasLimit.mul(120).div(100)
+      })
+      await tx.wait()
+
+      setSuccess('Dispute raised successfully!')
+      
+      const updatedListing = await marketContract.listings(listingId)
+      setListing({
+        ...listing,
+        listingStatus: updatedListing.listingStatus,
+      })
+    } catch (err: unknown) {
+      console.error('Error raising dispute:', err)
+      if (typeof err === 'object' && err !== null) {
+        if ('code' in err && typeof err.code === 'number') {
+          if (err.code === 4001) {
+            setError('Transaction was rejected by the user.')
+          } else if (err.code === -32603) {
+            setError('Internal error. Please try again.')
+          }
+        }
+        if ('message' in err && typeof err.message === 'string') {
+          setError(`Failed to raise dispute: ${err.message}`)
+        }
+      } else {
+        setError('An unknown error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
@@ -534,8 +591,8 @@ export default function ListingDetails() {
               <Label className="text-gray-300">Available Bids</Label>
               <div className="mt-2 space-y-2">
                 {bids.map((bid, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                    <span className="text-white">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-200 rounded">
+                    <span className="text-gray-800">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
                     <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="secondary" className="bg-blue-500 text-white hover:bg-blue-600">
                       Accept Bid
                     </Button>
@@ -560,6 +617,11 @@ export default function ListingDetails() {
         {(listing.listingStatus === 1 || listing.listingStatus === 5) && isUserBuyer && (
           <Button onClick={handleReleasePayment} disabled={loading} className="bg-yellow-500 text-white hover:bg-yellow-600">
             {loading ? 'Releasing Payment...' : 'Release Payment to Seller'}
+          </Button>
+        )}
+        {(listing.listingStatus === 1 || listing.listingStatus === 5) && (isUserBuyer || isUserSeller) && (
+          <Button onClick={handleDisputeTransaction} disabled={loading} className="bg-red-500 text-white hover:bg-red-600">
+            {loading ? 'Raising Dispute...' : 'Dispute Transaction'}
           </Button>
         )}
       </CardFooter>

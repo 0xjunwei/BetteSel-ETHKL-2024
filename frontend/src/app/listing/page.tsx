@@ -117,7 +117,7 @@ export default function ListingsPage() {
                 <p>Status: {getStatusText(listing.listingStatus)}</p>
               </CardContent>
               <CardFooter>
-                <Link href={`/listing?id=${listing.id}`} passHref>
+                <Link href={`/listing/${listing.id}`} passHref>
                   <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
                     View Details
                   </Button>
