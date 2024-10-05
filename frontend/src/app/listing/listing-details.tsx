@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ImageOff } from 'lucide-react'
 
-const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
+const contractAddress = '0xeFd78e5913CfC7B50e4eD66AccaC8C59C15ab478'
 const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 

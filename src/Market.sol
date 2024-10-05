@@ -481,8 +481,8 @@ contract Market {
             "Cannot raise a dispute for this listing"
         );
 
-        // Mark the listing as "in dispute" (status = 3)
-        userListing.listingStatus = 3;
+        // Mark the listing as "in dispute" (status = 2)
+        userListing.listingStatus = 2;
     }
 
     // Admin resolves the dispute and transfers the funds to either buyer or seller
