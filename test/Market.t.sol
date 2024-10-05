@@ -25,6 +25,11 @@ contract MarketTest is Test {
 
         // Deploy the Market contract
         market = new Market(address(usdcToken));
+        bytes32 user1WorldIDHash = keccak256(abi.encodePacked("User1WorldID")); // Mock worldIDHash for testing
+        bytes32 user2WorldIDHash = keccak256(abi.encodePacked("User2WorldID")); // Mock worldIDHash for testing
+        // Admin adds authorized users
+        market.addAuthorizedUser(user1, "User1PublicKey", user1WorldIDHash);
+        market.addAuthorizedUser(user2, "User2PublicKey", user2WorldIDHash);
     }
 
     // Test adding a new listing
