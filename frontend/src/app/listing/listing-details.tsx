@@ -531,9 +531,9 @@ export default function ListingDetails() {
               <Label>Available Bids</Label>
               <div className="mt-2 space-y-2">
                 {bids.map((bid, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 bg-gray-100 rounded">
-                    <span>{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
-                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading}>
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-200 rounded">
+                    <span className="text-gray-800">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
+                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="secondary">
                       Accept Bid
                     </Button>
                   </div>
@@ -543,7 +543,7 @@ export default function ListingDetails() {
           )}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-wrap gap-2 justify-center">
         {listing.listingStatus === 0 && !isUserSeller && (
           <Button onClick={handleBid} disabled={loading}>
             {loading ? 'Placing Bid...' : 'Place Bid'}
