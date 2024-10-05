@@ -20,6 +20,8 @@ contract Market {
     struct Bid {
         address bidder;
         uint256 bidAmount;
+        // Seller can read all bidders address, recommend to use PO box for delivery, require more advanced solution to hide the address in
+        // future
         string encryptedBidderAddress;
     }
 
@@ -213,6 +215,77 @@ contract Market {
             }
             emit newBid(_listingID, msg.sender, _bidPrice);
         }
+    }
+
+    // Change encrypted Address incase you mess up
+    function changeBidAddress(
+        uint256 _listingID,
+        string memory _newEncryptedAddress
+    ) public onlyAuthorized {
+        // Fetch the listing
+        Listing storage userListing = listings[_listingID];
+
+        // Ensure the listing status is unsold (0)
+        require(
+            userListing.listingStatus == 0,
+            "Listing status must be unsold (0)"
+        );
+        // Fetch the index of the caller's bid
+        uint256 index = bidderIndex[_listingID][msg.sender];
+
+        // Ensure the bid exists for the caller
+        require(
+            index < listingBids[_listingID].length,
+            "No bid found for this address"
+        );
+
+        // Fetch the bid
+        Bid storage bid = listingBids[_listingID][index];
+
+        // Ensure the caller is the original bidder
+        require(
+            bid.bidder == msg.sender,
+            "Only the original bidder can modify the address"
+        );
+
+        // Update the encrypted buyer address in the Bid struct
+        bid.encryptedBidderAddress = _newEncryptedAddress;
+    }
+
+    function changeAddressAfterAcceptance(
+        uint256 _listingID,
+        string memory _newEncryptedAddress
+    ) public onlyAuthorized {
+        // Fetch the listing
+        Listing storage userListing = listings[_listingID];
+
+        // Ensure the listing status is bid accepted (1)
+        require(
+            userListing.listingStatus == 1,
+            "Listing status must be 'bid accepted' (1)"
+        );
+
+        // Ensure the caller is the buyer of the listing
+        require(
+            userListing.buyer == msg.sender,
+            "Only the buyer can modify the address after acceptance"
+        );
+
+        // Update the encrypted address in the Listing struct
+        userListing.encryptedBuyerAddress = _newEncryptedAddress;
+
+        // Fetch the index of the caller's bid
+        uint256 index = bidderIndex[_listingID][msg.sender];
+
+        // Ensure the bid exists
+        require(
+            index < listingBids[_listingID].length,
+            "No bid found for this address"
+        );
+
+        // Update the encrypted address in the Bid struct
+        Bid storage bid = listingBids[_listingID][index];
+        bid.encryptedBidderAddress = _newEncryptedAddress;
     }
 
     // Release payment to listing when item receive
