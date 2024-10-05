@@ -23,8 +23,20 @@ const erc20Abi = [
   "function balanceOf(address account) public view returns (uint256)"
 ]
 
+interface ListingType {
+    itemId: string;
+    itemTitle: string;
+    seller: string;
+    price: string;
+    ipfsLink: string;
+    listingStatus: number;
+    buyer: string;
+    encryptedBuyerAddress: string;
+    blockTimestampForDispute: string;
+  }
+
 export default function ListingDetails() {
-  const [listing, setListing] = useState<any>(null)
+  const [listing, setListing] = useState<ListingType | null>(null)
   const [bidAmount, setBidAmount] = useState('')
   const [encryptedAddress, setEncryptedAddress] = useState('')
   const [error, setError] = useState('')
