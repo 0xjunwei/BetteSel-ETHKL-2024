@@ -15,7 +15,7 @@ const contractAddress = '0xd17666935513E0bCa6e3194f119F402Fd5856A11'
 const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
-const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}]
+const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"submitProofOfDelivery","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}]
 
 const erc20Abi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
@@ -259,6 +259,61 @@ export default function ListingDetails() {
     }
   }
 
+  const handleSubmitProofOfDelivery = async () => {
+    if (!listing || !listingId) {
+      setError('Listing information is missing.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
+      await provider.send("eth_requestAccounts", [])
+      const signer = provider.getSigner()
+      const marketContract = new ethers.Contract(contractAddress, abi, signer)
+
+      console.log('Submitting proof of delivery...')
+      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listingId)
+      const tx = await marketContract.submitProofOfDelivery(listingId, {
+        gasLimit: gasLimit.mul(120).div(100)
+      })
+      await tx.wait()
+
+      setSuccess('Proof of delivery submitted successfully!')
+      
+      const updatedListing = await marketContract.listings(listingId)
+      setListing({
+        ...listing,
+        listingStatus: updatedListing.listingStatus,
+      })
+    } catch (err: unknown) {
+      console.error('Error submitting proof of delivery:', err)
+      if (typeof err === 'object' && err !== null) {
+        if ('code' in err && typeof err.code === 'number') {
+          if (err.code === 4001) {
+            setError('Transaction was rejected by the user.')
+          } else if (err.code === -32603) {
+            setError('Internal error. Please try again.')
+          }
+        }
+        if ('message' in err && typeof err.message === 'string') {
+          setError(`Failed to submit proof of delivery: ${err.message}`)
+        }
+      } else {
+        setError('An unknown error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
@@ -268,6 +323,7 @@ export default function ListingDetails() {
   }
 
   const isUserBuyer = listing.buyer.toLowerCase() === userAddress.toLowerCase()
+  const isUserSeller = listing.seller.toLowerCase() === userAddress.toLowerCase()
 
   return (
     <Card className="w-full max-w-2xl mx-auto mt-8">
@@ -383,6 +439,11 @@ export default function ListingDetails() {
         {listing.listingStatus === 0 && (
           <Button onClick={handleBid} disabled={loading}>
             {loading ? 'Placing Bid...' : 'Place Bid'}
+          </Button>
+        )}
+        {listing.listingStatus === 1 && isUserSeller && (
+          <Button onClick={handleSubmitProofOfDelivery} disabled={loading}>
+            {loading ? 'Submitting Proof...' : 'Submit Proof of Delivery'}
           </Button>
         )}
         {(listing.listingStatus === 1 || listing.listingStatus === 5) && isUserBuyer && (
