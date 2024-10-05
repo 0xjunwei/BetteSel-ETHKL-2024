@@ -40,9 +40,7 @@ contract Market {
     // Mapping to store Unique Worldcoin users
     // user to their keys as bool
     mapping(address => string) public walletToPublicKey;
-    // Mapping of verified humans (proof) to wallet addresses and vice versa
-    mapping(bytes32 => address) public humanToWallet;
-    mapping(address => bytes32) public walletToHumanIDHash;
+
     // Save gas usdc address will nvr change in the chain, unless something goes wrong
     IERC20 public immutable USDCTOKEN;
     uint256 public feeBPS;
@@ -59,15 +57,6 @@ contract Market {
         address _bidderAddress,
         uint256 _bidAmount
     );
-
-    // Only authorized users can access certain functions
-    modifier onlyAuthorized() {
-        require(
-            bytes(walletToPublicKey[msg.sender]).length > 0,
-            "Not authorized"
-        );
-        _;
-    }
 
     // Only authorized users can access certain functions
     modifier onlyAdmin() {
@@ -99,7 +88,7 @@ contract Market {
         uint256 _price,
         string memory _itemTitle,
         string memory _ipfsLink
-    ) public onlyAuthorized {
+    ) public {
         listings[listingCount] = Listing(
             listingCount,
             _itemTitle,
@@ -117,34 +106,6 @@ contract Market {
     }
 
     // Add authorized user by admin
-    function addAuthorizedUser(
-        address _userAddress,
-        string memory _userPublicKey,
-        bytes32 worldIDHash
-    ) public onlyAdmin {
-        walletToPublicKey[_userAddress] = _userPublicKey;
-        // Ensure the human is not already registered
-        require(humanToWallet[worldIDHash] == address(0), "Already registered");
-
-        // Map the verified human (worldIDHash) to the provided wallet
-        humanToWallet[worldIDHash] = _userAddress;
-        walletToHumanIDHash[_userAddress] = worldIDHash;
-    }
-
-    // Remove user
-    function removeAuthorizedUser(address _userAddress) public onlyAdmin {
-        require(
-            bytes(walletToPublicKey[_userAddress]).length > 0,
-            "User does not exist"
-        );
-        // Get the worldIDHash associated with the user
-        bytes32 worldIDHash = walletToHumanIDHash[_userAddress];
-
-        // Set the mapping entry back to the default value (empty string)
-        walletToPublicKey[_userAddress] = "";
-        humanToWallet[worldIDHash] = address(0); // Set the address to 0
-        walletToHumanIDHash[_userAddress] = "";
-    }
 
     // Edit listing by listing owner
     function editListing(
@@ -153,7 +114,7 @@ contract Market {
         uint8 _listingStatus,
         uint256 _newPrice,
         string memory _newIPFS
-    ) public onlyAuthorized {
+    ) public {
         Listing storage userListing = listings[_listingID];
         require(
             userListing.seller == msg.sender,
@@ -180,7 +141,7 @@ contract Market {
         uint256 _listingID,
         uint256 _bidPrice,
         string memory _encryptedAddress
-    ) public onlyAuthorized {
+    ) public {
         // Check listing if unsold
         Listing storage userListing = listings[_listingID];
         require(userListing.listingStatus == 0, "Listing is not unsold");
@@ -243,7 +204,7 @@ contract Market {
     function changeBidAddress(
         uint256 _listingID,
         string memory _newEncryptedAddress
-    ) public onlyAuthorized {
+    ) public {
         // Fetch the listing
         Listing storage userListing = listings[_listingID];
 
@@ -277,7 +238,7 @@ contract Market {
     function changeAddressAfterAcceptance(
         uint256 _listingID,
         string memory _newEncryptedAddress
-    ) public onlyAuthorized {
+    ) public {
         // Fetch the listing
         Listing storage userListing = listings[_listingID];
 
@@ -311,7 +272,7 @@ contract Market {
     }
 
     // Release payment to listing when item receive
-    function releasePaymentToSeller(uint256 _listingID) public onlyAuthorized {
+    function releasePaymentToSeller(uint256 _listingID) public {
         Listing storage userListing = listings[_listingID];
 
         require(
@@ -339,10 +300,7 @@ contract Market {
     }
 
     // Owner of listing to sell to selected bid
-    function acceptBid(
-        uint256 _listingID,
-        address _bidder
-    ) public onlyAuthorized {
+    function acceptBid(uint256 _listingID, address _bidder) public {
         // Fetch the listing
         Listing storage userListing = listings[_listingID];
         // Ensure msg.sender is the owner of the listing
@@ -381,7 +339,7 @@ contract Market {
     }
 
     // Cancel Bid (must not be accepted)
-    function cancelBid(uint256 _listingId) public onlyAuthorized {
+    function cancelBid(uint256 _listingId) public {
         // Fetch the listing
         Listing storage userListing = listings[_listingId];
         // Fetch the index of the bidder's bid
@@ -404,13 +362,13 @@ contract Market {
     }
 
     // Submit proof of delivery
-    function submitProofOfDelivery(uint256 _listingID) public onlyAuthorized {
+    function submitProofOfDelivery(uint256 _listingID) public {
         Listing storage userListing = listings[_listingID];
 
-        // Only the buyer can submit proof of delivery
+        // Only the seller can submit proof of delivery
         require(
-            userListing.buyer == msg.sender,
-            "Only the buyer can submit proof of delivery"
+            userListing.seller == msg.sender,
+            "Only the seller can submit proof of delivery"
         );
 
         // Ensure the listing is in "bid accepted" state
@@ -419,8 +377,8 @@ contract Market {
             "Listing must be in bid accepted state"
         );
 
-        // Extend the timelock by 14 days before the seller can retrieve payment
-        userListing.blockTimestampForDispute = block.timestamp + 14 days;
+        // Extend the timelock by 21 days before the seller can retrieve payment
+        userListing.blockTimestampForDispute = block.timestamp + 21 days;
 
         // Mark the listing as delivered (status = 5)
         userListing.listingStatus = 5;
@@ -428,9 +386,7 @@ contract Market {
     }
 
     // Withdraw funds after proof of delivery
-    function sellerWithdrawalNoDispute(
-        uint256 _listingID
-    ) public onlyAuthorized {
+    function sellerWithdrawalNoDispute(uint256 _listingID) public {
         // Recognize i am not checking if msg.sender is the seller but hardcoded to fwd seller the funds, thus doesnt matter anyone can assist
         // the seller in retrieving their payment (can be platform helps to send the seller their funds by calling this, removing the gas requirement by seller)
         // Fetch the listing
@@ -466,7 +422,7 @@ contract Market {
     }
 
     // Dispute
-    function raiseDispute(uint256 _listingID) public onlyAuthorized {
+    function raiseDispute(uint256 _listingID) public {
         Listing storage userListing = listings[_listingID];
 
         // Only the buyer or seller can raise a dispute

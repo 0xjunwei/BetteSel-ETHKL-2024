@@ -25,21 +25,17 @@ contract MarketTest is Test {
 
         // Deploy the Market contract
         market = new Market(address(usdcToken));
-        bytes32 user1WorldIDHash = keccak256(abi.encodePacked("User1WorldID")); // Mock worldIDHash for testing
-        bytes32 user2WorldIDHash = keccak256(abi.encodePacked("User2WorldID")); // Mock worldIDHash for testing
-        // Admin adds authorized users
-        market.addAuthorizedUser(user1, "User1PublicKey", user1WorldIDHash);
-        market.addAuthorizedUser(user2, "User2PublicKey", user2WorldIDHash);
     }
 
     // Test adding a new listing
     function testAddListing() public {
         vm.prank(user1); // Act as user1
-        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+        market.addListing(100 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // Access the listing directly and compare the fields
         (
             uint256 itemId,
+            string memory itemTitle,
             address seller,
             uint256 price,
             string memory ipfsLink,
@@ -61,7 +57,7 @@ contract MarketTest is Test {
     function testAddBid() public {
         // User1 creates a listing
         vm.prank(user1);
-        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+        market.addListing(100 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // User2 approves the Market contract to spend their USDC
         vm.prank(user2);
@@ -74,6 +70,7 @@ contract MarketTest is Test {
         // Access the listing directly and compare the fields
         (
             uint256 itemId,
+            string memory itemTitle,
             address seller,
             uint256 price,
             string memory ipfsLink,
@@ -94,7 +91,7 @@ contract MarketTest is Test {
     function testUnderBid() public {
         // User1 creates a listing
         vm.prank(user1);
-        market.addListing(10000 * 10 ** 6, "ipfs://example_link");
+        market.addListing(10000 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // User2 approves the Market contract to spend their USDC
         vm.prank(user2);
@@ -107,6 +104,7 @@ contract MarketTest is Test {
         // Access the listing directly and compare the fields
         (
             uint256 itemId,
+            string memory itemTitle,
             address seller,
             uint256 price,
             string memory ipfsLink,
@@ -126,7 +124,7 @@ contract MarketTest is Test {
     function testReleasePayment() public {
         // User1 creates a listing
         vm.prank(user1);
-        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+        market.addListing(100 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // User2 approves the Market contract to spend their USDC
         vm.prank(user2);
@@ -154,7 +152,7 @@ contract MarketTest is Test {
     function testCancelBid() public {
         // User1 creates a listing
         vm.prank(user1);
-        market.addListing(10000 * 10 ** 6, "ipfs://example_link");
+        market.addListing(10000 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // User2 approves the Market contract to spend their USDC
         vm.prank(user2);
@@ -177,7 +175,7 @@ contract MarketTest is Test {
     function testDispute() public {
         // User1 creates a listing
         vm.prank(user1);
-        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+        market.addListing(100 * 10 ** 6, "Item 1", "ipfs://example_link");
 
         // User2 approves the Market contract to spend their USDC
         vm.prank(user2);
@@ -191,6 +189,7 @@ contract MarketTest is Test {
         market.raiseDispute(0);
         (
             uint256 itemIdAfterDispute,
+            string memory itemTitle,
             address sellerAfterDispute,
             uint256 priceAfterDispute,
             string memory ipfsLinkAfterDispute,
@@ -217,6 +216,7 @@ contract MarketTest is Test {
         market.resolveDispute(0, true);
         (
             uint256 itemIdAfterResolveDispute,
+            string memory itemTitle,
             address sellerAfterResolveDispute,
             uint256 priceAfterResolveDispute,
             string memory ipfsLinkAfterResolveDispute,
