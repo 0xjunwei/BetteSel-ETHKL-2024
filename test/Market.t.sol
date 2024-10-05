@@ -151,6 +151,27 @@ contract MarketTest is Test {
     }
 
     // Test cancelling a bid
+    function testCancelBid() public {
+        // User1 creates a listing
+        vm.prank(user1);
+        market.addListing(10000 * 10 ** 6, "ipfs://example_link");
+
+        // User2 approves the Market contract to spend their USDC
+        vm.prank(user2);
+        usdcToken.mint(user2, 100000 * 10 ** 6); // Mint 100000 USDC to user2
+        vm.prank(user2);
+        usdcToken.approve(address(market), 100 * 10 ** 6);
+        vm.prank(user2);
+        market.bidForListing(0, 100 * 10 ** 6, "Test address");
+        vm.prank(user2);
+        market.cancelBid(0);
+        // Fetch the bid information after cancellation
+        uint256 bidIndex = market.bidderIndex(0, user2);
+        (address bidder, uint256 bidAmount, ) = market.listingBids(0, bidIndex);
+
+        // Assert that the bid amount is 0
+        assertEq(bidAmount, 0, "Bid amount should be 0 after cancellation");
+    }
 
     // Test raising a dispute
     function testDispute() public {
