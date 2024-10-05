@@ -315,8 +315,8 @@ export default function ListingDetails() {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Submitting proof of delivery...')
-      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listingId)
-      const tx = await marketContract.submitProofOfDelivery(listingId, {
+      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listing.itemId)
+      const tx = await marketContract.submitProofOfDelivery(listing.itemId, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
@@ -533,7 +533,7 @@ export default function ListingDetails() {
                 {bids.map((bid, index) => (
                   <div key={index} className="flex justify-between items-center p-2 bg-gray-200 rounded">
                     <span className="text-gray-800">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
-                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="secondary">
+                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                       Accept Bid
                     </Button>
                   </div>
@@ -545,17 +545,17 @@ export default function ListingDetails() {
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2 justify-center">
         {listing.listingStatus === 0 && !isUserSeller && (
-          <Button onClick={handleBid} disabled={loading}>
+          <Button onClick={handleBid} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {loading ? 'Placing Bid...' : 'Place Bid'}
           </Button>
         )}
         {listing.listingStatus === 1 && isUserSeller && (
-          <Button onClick={handleSubmitProofOfDelivery} disabled={loading}>
+          <Button onClick={handleSubmitProofOfDelivery} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {loading ? 'Submitting Proof...' : 'Submit Proof of Delivery'}
           </Button>
         )}
         {(listing.listingStatus === 1 || listing.listingStatus === 5) && isUserBuyer && (
-          <Button onClick={handleReleasePayment} disabled={loading}>
+          <Button onClick={handleReleasePayment} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {loading ? 'Releasing Payment...' : 'Release Payment to Seller'}
           </Button>
         )}
