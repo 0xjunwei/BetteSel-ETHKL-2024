@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract Market {
     struct Listing {
         uint256 itemId;
+        string itemTitle;
         address seller;
         uint256 price;
         string ipfsLink;
@@ -96,10 +97,12 @@ contract Market {
     // Create listing by authorized user
     function addListing(
         uint256 _price,
+        string memory _itemTitle,
         string memory _ipfsLink
     ) public onlyAuthorized {
         listings[listingCount] = Listing(
             listingCount,
+            _itemTitle,
             msg.sender,
             _price,
             _ipfsLink,
@@ -146,6 +149,7 @@ contract Market {
     // Edit listing by listing owner
     function editListing(
         uint256 _listingID,
+        string memory _newTitle,
         uint8 _listingStatus,
         uint256 _newPrice,
         string memory _newIPFS
@@ -162,6 +166,9 @@ contract Market {
             userListing.listingStatus = 4;
         }
         userListing.price = _newPrice;
+        if (bytes(_newTitle).length > 0) {
+            userListing.itemTitle = _newTitle;
+        }
         // If _newIPFS is non-empty, update the IPFS link
         if (bytes(_newIPFS).length > 0) {
             userListing.ipfsLink = _newIPFS;
@@ -195,6 +202,7 @@ contract Market {
             // Update the block timestamp to 14 days from now
             userListing.blockTimestampForDispute = block.timestamp + 14 days;
             userListing.buyer = msg.sender;
+            userListing.encryptedBuyerAddress = _encryptedAddress;
             // Check if the bidder has already placed a bid
             if (bidderIndex[_listingID][msg.sender] == 0) {
                 // New bidder, append their bid and map their index
