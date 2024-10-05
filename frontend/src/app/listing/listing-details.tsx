@@ -69,6 +69,31 @@ export default function ListingDetails() {
   const searchParams = useSearchParams()
   const listingId = searchParams ? searchParams.get('id') : null
 
+  const fetchBids = async (contract: ethers.Contract, listingId: string) => {
+    try {
+      let index = 0
+      const fetchedBids: BidType[] = []
+      while (true) {
+        try {
+          const bid = await contract.listingBids(listingId, index)
+          if (bid.bidder === ethers.constants.AddressZero) break
+          fetchedBids.push({
+            bidder: bid.bidder,
+            bidAmount: ethers.utils.formatUnits(bid.bidAmount, 6),
+            encryptedBidderAddress: bid.encryptedBidderAddress
+          })
+          index++
+        } catch (error) {
+          console.error('Error fetching bid:', error)
+          break
+        }
+      }
+      setBids(fetchedBids)
+    } catch (error) {
+      console.error('Error fetching bids:', error)
+    }
+  }
+
   useEffect(() => {
     const fetchListingDetails = async () => {
       if (!listingId) return
@@ -112,31 +137,6 @@ export default function ListingDetails() {
     fetchListingDetails()
   }, [listingId])
 
-  const fetchBids = async (contract: ethers.Contract, listingId: string) => {
-    try {
-      let index = 0
-      const fetchedBids: BidType[] = []
-      while (true) {
-        try {
-          const bid = await contract.listingBids(listingId, index)
-          if (bid.bidder === ethers.constants.AddressZero) break
-          fetchedBids.push({
-            bidder: bid.bidder,
-            bidAmount: ethers.utils.formatUnits(bid.bidAmount, 6),
-            encryptedBidderAddress: bid.encryptedBidderAddress
-          })
-          index++
-        } catch (error) {
-          console.error('Error fetching bid:', error)
-          break
-        }
-      }
-      setBids(fetchedBids)
-    } catch (error) {
-      console.error('Error fetching bids:', error)
-    }
-  }
-
   useEffect(() => {
     if (listing && listing.ipfsLink) {
       const timer = setTimeout(() => {
@@ -151,7 +151,7 @@ export default function ListingDetails() {
   }, [listing, imageLoading])
 
   const handleBid = async () => {
-    if (!listing || !bidAmount || !encryptedAddress) {
+    if (!listing || !bidAmount || !encryptedAddress || !listingId) {
       setError('Please enter bid amount and encrypted address.')
       return
     }
