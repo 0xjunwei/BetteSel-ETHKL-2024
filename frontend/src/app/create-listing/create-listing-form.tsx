@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 
-const contractAddress = '0xEFcFA0f2d4f2430426e3120c057133F0fc212DA3'
+const contractAddress = '0xb1E71c74cB1f33FbBe653ee15f01151f5730fE85'
 
 const abi = [{"type":"function","name":"addListing","inputs":[{"name":"_price","type":"uint256","internalType":"uint256"},{"name":"_itemTitle","type":"string","internalType":"string"},{"name":"_ipfsLink","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"}]
 

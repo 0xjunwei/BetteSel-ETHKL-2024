@@ -372,6 +372,7 @@ contract Market {
 
         // Set the buyer to the accepted bidder
         userListing.buyer = _bidder;
+        userListing.price = bid.bidAmount;
         // move the encrypted address
         userListing.encryptedBuyerAddress = bid.encryptedBidderAddress;
 
