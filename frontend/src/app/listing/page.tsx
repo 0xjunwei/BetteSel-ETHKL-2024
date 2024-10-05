@@ -64,15 +64,14 @@ export default function ListingsPage() {
       for (let i = 0; i <= listingCount.toNumber(); i++) {
         try {
           const listing = await contract.listings(i)
-          if (listing.itemId.toNumber() !== 0) {
-            fetchedListings.push({
-              id: listing.itemId.toString(),
-              itemTitle: listing.itemTitle,
-              seller: listing.seller,
-              price: ethers.utils.formatUnits(listing.price, 6),
-              status: listing.listingStatus
-            })
-          }
+          // Remove the check for itemId !== 0
+          fetchedListings.push({
+            id: listing.itemId.toString(),
+            itemTitle: listing.itemTitle,
+            seller: listing.seller,
+            price: ethers.utils.formatUnits(listing.price, 6),
+            status: listing.listingStatus
+          })
         } catch (listingError) {
           console.error(`Error fetching listing ${i}:`, listingError)
         }
@@ -160,6 +159,7 @@ export default function ListingsPage() {
                 <CardTitle>{listing.itemTitle}</CardTitle>
               </CardHeader>
               <CardContent>
+                <p>Listing ID: {listing.id}</p>
                 <p>Seller: {listing.seller.slice(0, 6)}...{listing.seller.slice(-4)}</p>
                 <p>Price: {listing.price} USDC</p>
                 <p>Status: {getStatusText(listing.status)}</p>
