@@ -267,6 +267,8 @@ export default function ListingDetails() {
     return <div className="flex justify-center items-center h-screen">No listing found</div>
   }
 
+  const isUserBuyer = listing.buyer.toLowerCase() === userAddress.toLowerCase()
+
   return (
     <Card className="w-full max-w-2xl mx-auto mt-8">
       <CardHeader>
@@ -383,7 +385,7 @@ export default function ListingDetails() {
             {loading ? 'Placing Bid...' : 'Place Bid'}
           </Button>
         )}
-        {listing.listingStatus === 5 && listing.buyer.toLowerCase() === userAddress.toLowerCase() && (
+        {(listing.listingStatus === 1 || listing.listingStatus === 5) && isUserBuyer && (
           <Button onClick={handleReleasePayment} disabled={loading}>
             {loading ? 'Releasing Payment...' : 'Release Payment to Seller'}
           </Button>
