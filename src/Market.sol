@@ -493,7 +493,7 @@ contract Market {
         Listing storage userListing = listings[_listingID];
 
         // Ensure the listing is in dispute
-        require(userListing.listingStatus == 3, "Listing is not in dispute");
+        require(userListing.listingStatus == 2, "Listing is not in dispute");
         uint256 fee = (userListing.price * feeBPS) / 10000; // Calculate the 2% fee
         // Pay back the amount - fee as the feeBPS is used to cover admin charges and dispute charges
         uint256 sendAmount = userListing.price - fee;

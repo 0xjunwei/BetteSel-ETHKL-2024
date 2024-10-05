@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, RefreshCw, PlusCircle } from 'lucide-react'
 
-const contractAddress = '0xeFd78e5913CfC7B50e4eD66AccaC8C59C15ab478'
+const contractAddress = '0x4FDA7420E9f3b8C1fe9e98C164FA21f39cc2de60'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
 const abi = [
@@ -38,60 +41,117 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const router = useRouter()
+
+  const fetchListings = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
+      const contract = new ethers.Contract(contractAddress, abi, provider)
+
+      const listingCount = await contract.listingCount()
+      const fetchedListings: Listing[] = []
+
+      for (let i = 1; i <= listingCount.toNumber(); i++) {
+        const listing = await contract.listings(i)
+        if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
+          fetchedListings.push({
+            id: listing.itemId.toString(),
+            itemTitle: listing.itemTitle,
+            seller: listing.seller,
+            price: ethers.utils.formatUnits(listing.price, 6),
+            status: listing.listingStatus
+          })
+        }
+      }
+
+      setListings(fetchedListings)
+    } catch (err) {
+      console.error('Error fetching listings:', err)
+      setError('Failed to fetch listings. Please try again later.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
-        const contract = new ethers.Contract(contractAddress, abi, provider)
-
-        const listingCount = await contract.listingCount()
-        const fetchedListings: Listing[] = []
-
-        for (let i = 1; i <= listingCount.toNumber(); i++) {
-          const listing = await contract.listings(i)
-          if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
-            fetchedListings.push({
-              id: listing.itemId.toString(),
-              itemTitle: listing.itemTitle,
-              seller: listing.seller,
-              price: ethers.utils.formatUnits(listing.price, 6),
-              status: listing.listingStatus
-            })
-          }
-        }
-
-        setListings(fetchedListings)
-      } catch (err) {
-        console.error('Error fetching listings:', err)
-        setError('Failed to fetch listings. Please try again later.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchListings()
   }, [])
 
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchListings()
+    router.refresh() // This will trigger a re-render and clear the router cache
+    setRefreshing(false)
+  }
+
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="mt-4 text-lg text-primary">Loading listings...</p>
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={handleRefresh} className="mt-4">
+          Try Again
+        </Button>
+      </div>
+    )
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Available Listings</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-primary">Available Listings</h1>
+        <div className="space-x-2">
+          <Button onClick={handleRefresh} disabled={refreshing} className="bg-primary text-primary-foreground">
+            {refreshing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Listings
+              </>
+            )}
+          </Button>
+          <Link href="/create-listing" passHref>
+            <Button className="bg-secondary text-secondary-foreground">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Listing
+            </Button>
+          </Link>
+        </div>
+      </div>
       {listings.length === 0 ? (
-        <p className="text-center text-gray-500">No listings available at the moment.</p>
+        <Card className="bg-muted">
+          <CardContent className="flex flex-col items-center justify-center py-10">
+            <p className="text-center text-muted-foreground mb-4">No listings available at the moment.</p>
+            <Link href="/create-listing" passHref>
+              <Button className="bg-primary text-primary-foreground">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Your First Listing
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((listing) => (
-            <Card key={listing.id} className="bg-gray-800 text-white">
+            <Card key={listing.id} className="bg-card text-card-foreground">
               <CardHeader>
                 <CardTitle>{listing.itemTitle}</CardTitle>
               </CardHeader>
@@ -102,7 +162,7 @@ export default function ListingsPage() {
               </CardContent>
               <CardFooter>
                 <Link href={`/listing/${listing.id}`} passHref>
-                  <Button className="w-full">View Details</Button>
+                  <Button className="w-full bg-primary text-primary-foreground">View Details</Button>
                 </Link>
               </CardFooter>
             </Card>
