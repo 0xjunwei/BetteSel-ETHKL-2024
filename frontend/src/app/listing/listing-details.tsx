@@ -311,9 +311,7 @@ export default function ListingDetails() {
 
       const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
       await provider.send("eth_requestAccounts", [])
-      const signer = provider.getS
-
-igner()
+      const signer = provider.getSigner()
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Submitting proof of delivery...')
