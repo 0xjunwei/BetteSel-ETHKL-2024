@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { ImageOff } from 'lucide-react'
+import { ImageOff, Loader2 } from 'lucide-react'
 
 const contractAddress = '0xEFcFA0f2d4f2430426e3120c057133F0fc212DA3'
 const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
@@ -135,6 +135,8 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
           const signer = web3Provider.getSigner()
           const address = await signer.getAddress()
           setUserAddress(address)
+          const adminStatus = await contract.adminAccess(address)
+          setIsAdmin(adminStatus)
         }
 
         await fetchBids(contract, id)
@@ -148,19 +150,6 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
 
     fetchListingDetails()
   }, [id])
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (typeof window.ethereum !== 'undefined' && userAddress) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
-        const contract = new ethers.Contract(contractAddress, abi, provider)
-        const adminStatus = await contract.adminAccess(userAddress)
-        setIsAdmin(adminStatus)
-      }
-    }
-
-    checkAdminStatus()
-  }, [userAddress])
 
   useEffect(() => {
     if (listing && listing.ipfsLink) {
@@ -543,7 +532,12 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    )
   }
 
   if (!listing) {
