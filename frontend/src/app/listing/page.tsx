@@ -3,19 +3,26 @@
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, RefreshCw, PlusCircle } from 'lucide-react'
 
-// Update this to your current contract address
-const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
+const contractAddress = '0x4FDA7420E9f3b8C1fe9e98C164FA21f39cc2de60'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
 const abi = [
   {"type":"function","name":"listingCount","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},
-  {"type":"function","name":"listings","inputs":[{"name":"","type":"uint256"}],"outputs":[{"name":"itemId","type":"uint256"},{"name":"itemTitle","type":"string"},{"name":"seller","type":"address"},{"name":"price","type":"uint256"},{"name":"ipfsLink","type":"string"},{"name":"listingStatus","type":"uint8"},{"name":"buyer","type":"address"},{"name":"encryptedBuyerAddress","type":"string"},{"name":"blockTimestampForDispute","type":"uint256"}],"stateMutability":"view"}
+  {"type":"function","name":"listings","inputs":[{"name":"","type":"uint256"}],"outputs":[{"name":"itemId","type":"uint256"},{"name":"itemTitle","type":"string"},{"name":"seller","type":"address"},{"name":"price","type":"uint256"},{"name":"ipfsLink","type":"string"},{"name":"listingStatus","type":"uint8"},{"name":"buyer","type":"address"},{"name":"encryptedBuyerAddress","type":"string"},{"name":"blockTimestampForDispute","type":"uint256"}],"stateMutability":"view"},
+  {"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256"},{"name":"_bidPrice","type":"uint256"},{"name":"_encryptedAddress","type":"string"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address"}],"outputs":[{"name":"","type":"string"}],"stateMutability":"view"},
+  {"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"submitProofOfDelivery","inputs":[{"name":"_listingID","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"listingBids","inputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"outputs":[{"name":"bidder","type":"address"},{"name":"bidAmount","type":"uint256"},{"name":"encryptedBidderAddress","type":"string"}],"stateMutability":"view"},
+  {"type":"function","name":"acceptBid","inputs":[{"name":"_listingID","type":"uint256"},{"name":"_bidder","type":"address"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"raiseDispute","inputs":[{"name":"_listingID","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"adminAccess","inputs":[{"name":"","type":"address"}],"outputs":[{"name":"","type":"bool"}],"stateMutability":"view"},
+  {"type":"function","name":"resolveDispute","inputs":[{"name":"_listingID","type":"uint256"},{"name":"sendToSeller","type":"bool"}],"outputs":[],"stateMutability":"nonpayable"}
 ]
 
 interface Listing {
@@ -43,52 +50,40 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<string>('')
-  const router = useRouter()
 
   const fetchListings = async () => {
-    let tempDebugInfo = ''
     try {
       setLoading(true)
       setError(null)
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
       const contract = new ethers.Contract(contractAddress, abi, provider)
 
-      tempDebugInfo += `Connected to contract at ${contractAddress}\n`
-
       const listingCount = await contract.listingCount()
-      tempDebugInfo += `Total listing count: ${listingCount.toString()}\n`
-
       const fetchedListings: Listing[] = []
 
-      for (let i = 1; i <= listingCount.toNumber(); i++) {
-        tempDebugInfo += `Fetching listing ${i}...\n`
-        const listing = await contract.listings(i)
-        tempDebugInfo += `Listing ${i} data: ${JSON.stringify(listing)}\n`
-        
-        if (listing.itemId.toNumber() !== 0) {
-          fetchedListings.push({
-            id: listing.itemId.toString(),
-            itemTitle: listing.itemTitle,
-            seller: listing.seller,
-            price: ethers.utils.formatUnits(listing.price, 6),
-            status: listing.listingStatus
-          })
-          tempDebugInfo += `Listing ${i} added to fetchedListings\n`
-        } else {
-          tempDebugInfo += `Listing ${i} skipped (itemId is 0)\n`
+      for (let i = 0; i <= listingCount.toNumber(); i++) {
+        try {
+          const listing = await contract.listings(i)
+          if (listing.itemId.toNumber() !== 0) {
+            fetchedListings.push({
+              id: listing.itemId.toString(),
+              itemTitle: listing.itemTitle,
+              seller: listing.seller,
+              price: ethers.utils.formatUnits(listing.price, 6),
+              status: listing.listingStatus
+            })
+          }
+        } catch (listingError) {
+          console.error(`Error fetching listing ${i}:`, listingError)
         }
       }
 
       setListings(fetchedListings)
-      tempDebugInfo += `Total fetched listings: ${fetchedListings.length}\n`
     } catch (err) {
       console.error('Error fetching listings:', err)
       setError('Failed to fetch listings. Please try again later.')
-      tempDebugInfo += `Error: ${err instanceof Error ? err.message : String(err)}\n`
     } finally {
       setLoading(false)
-      setDebugInfo(tempDebugInfo)
     }
   }
 
@@ -99,7 +94,6 @@ export default function ListingsPage() {
   const handleRefresh = async () => {
     setRefreshing(true)
     await fetchListings()
-    router.refresh()
     setRefreshing(false)
   }
 
@@ -179,12 +173,6 @@ export default function ListingsPage() {
           ))}
         </div>
       )}
-
-      {/* Debug Information */}
-      <details className="mt-8 p-4 bg-gray-100 rounded-lg">
-        <summary className="font-bold cursor-pointer">Debug Information</summary>
-        <pre className="mt-2 whitespace-pre-wrap">{debugInfo}</pre>
-      </details>
     </div>
   )
 }
