@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -38,42 +39,48 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const fetchListings = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
+      const contract = new ethers.Contract(contractAddress, abi, provider)
+
+      const listingCount = await contract.listingCount()
+      const fetchedListings: Listing[] = []
+
+      for (let i = 1; i <= listingCount.toNumber(); i++) {
+        const listing = await contract.listings(i)
+        if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
+          fetchedListings.push({
+            id: listing.itemId.toString(),
+            itemTitle: listing.itemTitle,
+            seller: listing.seller,
+            price: ethers.utils.formatUnits(listing.price, 6),
+            status: listing.listingStatus
+          })
+        }
+      }
+
+      setListings(fetchedListings)
+    } catch (err) {
+      console.error('Error fetching listings:', err)
+      setError('Failed to fetch listings. Please try again later.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
-        const contract = new ethers.Contract(contractAddress, abi, provider)
-
-        const listingCount = await contract.listingCount()
-        const fetchedListings: Listing[] = []
-
-        for (let i = 1; i <= listingCount.toNumber(); i++) {
-          const listing = await contract.listings(i)
-          if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
-            fetchedListings.push({
-              id: listing.itemId.toString(),
-              itemTitle: listing.itemTitle,
-              seller: listing.seller,
-              price: ethers.utils.formatUnits(listing.price, 6),
-              status: listing.listingStatus
-            })
-          }
-        }
-
-        setListings(fetchedListings)
-      } catch (err) {
-        console.error('Error fetching listings:', err)
-        setError('Failed to fetch listings. Please try again later.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchListings()
   }, [])
+
+  const handleRefresh = () => {
+    fetchListings()
+    router.refresh() // This will trigger a re-render and clear the router cache
+  }
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>
@@ -85,7 +92,12 @@ export default function ListingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Available Listings</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Available Listings</h1>
+        <Button onClick={handleRefresh} className="bg-blue-500 hover:bg-blue-600 text-white">
+          Refresh Listings
+        </Button>
+      </div>
       {listings.length === 0 ? (
         <p className="text-center text-gray-500">No listings available at the moment.</p>
       ) : (
