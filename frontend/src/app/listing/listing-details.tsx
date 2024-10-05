@@ -69,8 +69,6 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   const [sellerPublicKey, setSellerPublicKey] = useState('')
   const [userAddress, setUserAddress] = useState('')
 
-  const listingId = id
-
   const fetchBids = async (contract: ethers.Contract, listingId: string) => {
     try {
       let index = 0
@@ -98,13 +96,13 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
 
   useEffect(() => {
     const fetchListingDetails = async () => {
-      if (!listingId) return
+      if (!id) return
 
       try {
         setLoading(true)
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
         const contract = new ethers.Contract(contractAddress, abi, provider)
-        const listingDetails = await contract.listings(listingId)
+        const listingDetails = await contract.listings(id)
         setListing({
           itemId: listingDetails.itemId.toString(),
           itemTitle: listingDetails.itemTitle,
@@ -127,7 +125,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
           setUserAddress(address)
         }
 
-        await fetchBids(contract, listingId)
+        await fetchBids(contract, id)
       } catch (err) {
         setError('Failed to fetch listing details. Please try again.')
         console.error('Error fetching listing details:', err)
@@ -137,7 +135,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
     }
 
     fetchListingDetails()
-  }, [listingId])
+  }, [id])
 
   useEffect(() => {
     if (listing && listing.ipfsLink) {
@@ -153,7 +151,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }, [listing, imageLoading])
 
   const handleBid = async () => {
-    if (!listing || !bidAmount || !encryptedAddress || !listingId) {
+    if (!listing || !bidAmount || !encryptedAddress || !id) {
       setError('Please enter bid amount and encrypted address.')
       return
     }
@@ -208,14 +206,14 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
       setBidAmount('')
       setEncryptedAddress('')
       
-      const updatedListing = await marketContract.listings(listingId)
+      const updatedListing = await marketContract.listings(id)
       setListing({
         ...listing,
         listingStatus: updatedListing.listingStatus,
         buyer: updatedListing.buyer,
         encryptedBuyerAddress: updatedListing.encryptedBuyerAddress,
       })
-      await fetchBids(marketContract, listingId)
+      await fetchBids(marketContract, id)
     } catch (err: unknown) {
       console.error('Error placing bid:', err)
       if (typeof err === 'object' && err !== null) {
@@ -242,7 +240,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }
 
   const handleReleasePayment = async () => {
-    if (!listing || !listingId) {
+    if (!listing || !id) {
       setError('Listing information is missing.')
       return
     }
@@ -262,15 +260,15 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Releasing payment...')
-      const gasLimit = await marketContract.estimateGas.releasePaymentToSeller(listingId)
-      const tx = await marketContract.releasePaymentToSeller(listingId, {
+      const gasLimit = await marketContract.estimateGas.releasePaymentToSeller(id)
+      const tx = await marketContract.releasePaymentToSeller(id, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
 
       setSuccess('Payment released successfully!')
       
-      const updatedListing = await marketContract.listings(listingId)
+      const updatedListing = await marketContract.listings(id)
       setListing({
         ...listing,
         listingStatus: updatedListing.listingStatus,
@@ -297,7 +295,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }
 
   const handleSubmitProofOfDelivery = async () => {
-    if (!listing || !listingId) {
+    if (!listing || !id) {
       setError('Listing information is missing.')
       return
     }
@@ -317,15 +315,15 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Submitting proof of delivery...')
-      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listingId)
-      const tx = await marketContract.submitProofOfDelivery(listingId, {
+      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(id)
+      const tx = await marketContract.submitProofOfDelivery(id, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
 
       setSuccess('Proof of delivery submitted successfully!')
       
-      const updatedListing = await marketContract.listings(listingId)
+      const updatedListing = await marketContract.listings(id)
       setListing({
         ...listing,
         listingStatus: updatedListing.listingStatus,
@@ -352,7 +350,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }
 
   const handleAcceptBid = async (bidder: string) => {
-    if (!listing || !listingId) {
+    if (!listing || !id) {
       setError('Listing information is missing.')
       return
     }
@@ -372,22 +370,22 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Accepting bid...')
-      const gasLimit = await marketContract.estimateGas.acceptBid(listingId, bidder)
-      const tx = await marketContract.acceptBid(listingId, bidder, {
+      const gasLimit = await marketContract.estimateGas.acceptBid(id, bidder)
+      const tx = await marketContract.acceptBid(id, bidder, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
 
       setSuccess('Bid accepted successfully!')
       
-      const updatedListing = await marketContract.listings(listingId)
+      const updatedListing = await marketContract.listings(id)
       setListing({
         ...listing,
         listingStatus: updatedListing.listingStatus,
         buyer: updatedListing.buyer,
         encryptedBuyerAddress: updatedListing.encryptedBuyerAddress,
       })
-      await fetchBids(marketContract, listingId)
+      await fetchBids(marketContract, id)
     } catch (err: unknown) {
       console.error('Error accepting bid:', err)
       if (typeof err === 'object' && err !== null) {
@@ -410,7 +408,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
   }
 
   const handleDisputeTransaction = async () => {
-    if (!listing || !listingId) {
+    if (!listing || !id) {
       setError('Listing information is missing.')
       return
     }
@@ -430,15 +428,15 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Raising dispute...')
-      const gasLimit = await marketContract.estimateGas.raiseDispute(listingId)
-      const tx = await marketContract.raiseDispute(listingId, {
+      const gasLimit = await marketContract.estimateGas.raiseDispute(id)
+      const tx = await marketContract.raiseDispute(id, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
 
       setSuccess('Dispute raised successfully!')
       
-      const updatedListing = await marketContract.listings(listingId)
+      const updatedListing = await marketContract.listings(id)
       setListing({
         ...listing,
         listingStatus: updatedListing.listingStatus,
@@ -479,7 +477,7 @@ export default function ListingDetails({ id }: ListingDetailsProps) {
     <Card className="w-full max-w-2xl mx-auto mt-8 bg-gray-900 text-white">
       <CardHeader>
         <CardTitle>Listing Details</CardTitle>
-        <CardDescription className="text-gray-300">View details and place bid for listing {listingId}</CardDescription>
+        <CardDescription className="text-gray-300">View details and place bid for listing {id}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
