@@ -407,10 +407,10 @@ contract Market {
     function submitProofOfDelivery(uint256 _listingID) public onlyAuthorized {
         Listing storage userListing = listings[_listingID];
 
-        // Only the buyer can submit proof of delivery
+        // Only the seller can submit proof of delivery
         require(
-            userListing.buyer == msg.sender,
-            "Only the buyer can submit proof of delivery"
+            userListing.seller == msg.sender,
+            "Only the seller can submit proof of delivery"
         );
 
         // Ensure the listing is in "bid accepted" state
