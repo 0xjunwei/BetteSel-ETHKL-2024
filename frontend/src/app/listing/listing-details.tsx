@@ -311,12 +311,14 @@ export default function ListingDetails() {
 
       const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
       await provider.send("eth_requestAccounts", [])
-      const signer = provider.getSigner()
+      const signer = provider.getS
+
+igner()
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Submitting proof of delivery...')
-      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listing.itemId)
-      const tx = await marketContract.submitProofOfDelivery(listing.itemId, {
+      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listingId)
+      const tx = await marketContract.submitProofOfDelivery(listingId, {
         gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
@@ -419,40 +421,41 @@ export default function ListingDetails() {
   const isUserSeller = listing.seller.toLowerCase() === userAddress.toLowerCase()
 
   return (
-    <Card className="w-full max-w-2xl mx-auto mt-8">
+    <Card className="w-full max-w-2xl mx-auto mt-8 bg-gray-900 text-white">
       <CardHeader>
         <CardTitle>Listing Details</CardTitle>
-        <CardDescription>View details and place bid for listing {listingId}</CardDescription>
+        <CardDescription className="text-gray-300">View details and place bid for listing {listingId}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="itemTitle">Item Title</Label>
-            <Input id="itemTitle" value={listing.itemTitle} readOnly />
+            <Label htmlFor="itemTitle" className="text-gray-300">Item Title</Label>
+            <Input id="itemTitle" value={listing.itemTitle} readOnly className="bg-gray-800 text-white" />
           </div>
           <div>
-            <Label htmlFor="seller">Seller</Label>
-            <Input id="seller" value={listing.seller} readOnly />
+            <Label htmlFor="seller" className="text-gray-300">Seller</Label>
+            <Input id="seller" value={listing.seller} readOnly className="bg-gray-800 text-white" />
           </div>
           <div>
-            <Label htmlFor="sellerPublicKey">Seller&apos;s Public Key</Label>
-            <Input id="sellerPublicKey" value={sellerPublicKey} readOnly />
+            <Label htmlFor="sellerPublicKey" className="text-gray-300">Seller&apos;s Public Key</Label>
+            <Input id="sellerPublicKey" value={sellerPublicKey} readOnly className="bg-gray-800 text-white" />
           </div>
           <div>
-            <Label htmlFor="price">Price (USDC)</Label>
-            <Input id="price" value={listing.price} readOnly />
+            <Label htmlFor="price" className="text-gray-300">Price (USDC)</Label>
+            <Input id="price" value={listing.price} readOnly className="bg-gray-800 text-white" />
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status" className="text-gray-300">Status</Label>
             <Input 
               id="status" 
               value={getStatusText(listing.listingStatus)}
               readOnly 
+              className="bg-gray-800 text-white"
             />
           </div>
           <div>
-            <Label>Item Image</Label>
-            <div className="mt-2 relative w-full h-64 bg-gray-100 rounded-md overflow-hidden">
+            <Label className="text-gray-300">Item Image</Label>
+            <div className="mt-2 relative w-full h-64 bg-gray-800 rounded-md overflow-hidden">
               {listing.ipfsLink ? (
                 <Image
                   src={listing.ipfsLink}
@@ -468,18 +471,18 @@ export default function ListingDetails() {
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
-                  <span className="text-gray-500">No image available</span>
+                  <span className="text-gray-400">No image available</span>
                 </div>
               )}
               {imageLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
-                  <span className="text-gray-500">Loading image...</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
+                  <span className="text-gray-300">Loading image...</span>
                 </div>
               )}
               {imageError && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <ImageOff className="w-12 h-12 text-gray-400 mb-2" />
-                  <span className="text-gray-500">Failed to load image</span>
+                  <span className="text-gray-400">Failed to load image</span>
                 </div>
               )}
             </div>
@@ -487,7 +490,7 @@ export default function ListingDetails() {
           {listing.listingStatus === 0 ? (
             <>
               <div>
-                <Label htmlFor="bidAmount">Your Bid Amount (USDC)</Label>
+                <Label htmlFor="bidAmount" className="text-gray-300">Your Bid Amount (USDC)</Label>
                 <Input
                   id="bidAmount"
                   type="number"
@@ -496,22 +499,24 @@ export default function ListingDetails() {
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
                   placeholder="Enter bid amount in USDC"
+                  className="bg-gray-800 text-white"
                 />
               </div>
               <div>
-                <Label htmlFor="encryptedAddress">Your Encrypted Address</Label>
+                <Label htmlFor="encryptedAddress" className="text-gray-300">Your Encrypted Address</Label>
                 <Input
                   id="encryptedAddress"
                   value={encryptedAddress}
                   onChange={(e) => setEncryptedAddress(e.target.value)}
                   placeholder="Enter your encrypted address"
+                  className="bg-gray-800 text-white"
                 />
               </div>
             </>
           ) : (
             <div>
-              <Label htmlFor="encryptedBuyerAddress">Encrypted Buyer Address</Label>
-              <Input id="encryptedBuyerAddress" value={listing.encryptedBuyerAddress || 'Not available'} readOnly />
+              <Label htmlFor="encryptedBuyerAddress" className="text-gray-300">Encrypted Buyer Address</Label>
+              <Input id="encryptedBuyerAddress" value={listing.encryptedBuyerAddress || 'Not available'} readOnly className="bg-gray-800 text-white" />
             </div>
           )}
           {error && (
@@ -528,12 +533,12 @@ export default function ListingDetails() {
           )}
           {listing.listingStatus === 0 && isUserSeller && bids.length > 0 && (
             <div>
-              <Label>Available Bids</Label>
+              <Label className="text-gray-300">Available Bids</Label>
               <div className="mt-2 space-y-2">
                 {bids.map((bid, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 bg-gray-200 rounded">
-                    <span className="text-gray-800">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
-                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
+                    <span className="text-white">{bid.bidder.slice(0, 6)}...{bid.bidder.slice(-4)} - {bid.bidAmount} USDC</span>
+                    <Button onClick={() => handleAcceptBid(bid.bidder)} disabled={loading} variant="secondary" className="bg-blue-500 text-white hover:bg-blue-600">
                       Accept Bid
                     </Button>
                   </div>
@@ -545,17 +550,17 @@ export default function ListingDetails() {
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2 justify-center">
         {listing.listingStatus === 0 && !isUserSeller && (
-          <Button onClick={handleBid} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={handleBid} disabled={loading} className="bg-blue-500 text-white hover:bg-blue-600">
             {loading ? 'Placing Bid...' : 'Place Bid'}
           </Button>
         )}
         {listing.listingStatus === 1 && isUserSeller && (
-          <Button onClick={handleSubmitProofOfDelivery} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={handleSubmitProofOfDelivery} disabled={loading} className="bg-green-500 text-white hover:bg-green-600">
             {loading ? 'Submitting Proof...' : 'Submit Proof of Delivery'}
           </Button>
         )}
         {(listing.listingStatus === 1 || listing.listingStatus === 5) && isUserBuyer && (
-          <Button onClick={handleReleasePayment} disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={handleReleasePayment} disabled={loading} className="bg-yellow-500 text-white hover:bg-yellow-600">
             {loading ? 'Releasing Payment...' : 'Release Payment to Seller'}
           </Button>
         )}
