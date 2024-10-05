@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, RefreshCw, PlusCircle } from 'lucide-react'
 
-const contractAddress = '0x4FDA7420E9f3b8C1fe9e98C164FA21f39cc2de60'
+// Update this to your current contract address
+const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
 const abi = [
@@ -42,21 +43,30 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<string>('')
   const router = useRouter()
 
   const fetchListings = async () => {
+    let tempDebugInfo = ''
     try {
       setLoading(true)
       setError(null)
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl)
       const contract = new ethers.Contract(contractAddress, abi, provider)
 
+      tempDebugInfo += `Connected to contract at ${contractAddress}\n`
+
       const listingCount = await contract.listingCount()
+      tempDebugInfo += `Total listing count: ${listingCount.toString()}\n`
+
       const fetchedListings: Listing[] = []
 
       for (let i = 1; i <= listingCount.toNumber(); i++) {
+        tempDebugInfo += `Fetching listing ${i}...\n`
         const listing = await contract.listings(i)
-        if (listing.itemId.toNumber() !== 0) {  // Check if the listing exists
+        tempDebugInfo += `Listing ${i} data: ${JSON.stringify(listing)}\n`
+        
+        if (listing.itemId.toNumber() !== 0) {
           fetchedListings.push({
             id: listing.itemId.toString(),
             itemTitle: listing.itemTitle,
@@ -64,15 +74,21 @@ export default function ListingsPage() {
             price: ethers.utils.formatUnits(listing.price, 6),
             status: listing.listingStatus
           })
+          tempDebugInfo += `Listing ${i} added to fetchedListings\n`
+        } else {
+          tempDebugInfo += `Listing ${i} skipped (itemId is 0)\n`
         }
       }
 
       setListings(fetchedListings)
+      tempDebugInfo += `Total fetched listings: ${fetchedListings.length}\n`
     } catch (err) {
       console.error('Error fetching listings:', err)
       setError('Failed to fetch listings. Please try again later.')
+      tempDebugInfo += `Error: ${err instanceof Error ? err.message : String(err)}\n`
     } finally {
       setLoading(false)
+      setDebugInfo(tempDebugInfo)
     }
   }
 
@@ -83,7 +99,7 @@ export default function ListingsPage() {
   const handleRefresh = async () => {
     setRefreshing(true)
     await fetchListings()
-    router.refresh() // This will trigger a re-render and clear the router cache
+    router.refresh()
     setRefreshing(false)
   }
 
@@ -92,20 +108,6 @@ export default function ListingsPage() {
       <div className="flex flex-col items-center justify-center h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="mt-4 text-lg text-primary">Loading listings...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-        <Button onClick={handleRefresh} className="mt-4">
-          Try Again
-        </Button>
       </div>
     )
   }
@@ -136,6 +138,14 @@ export default function ListingsPage() {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {listings.length === 0 ? (
         <Card className="bg-muted">
           <CardContent className="flex flex-col items-center justify-center py-10">
@@ -169,6 +179,12 @@ export default function ListingsPage() {
           ))}
         </div>
       )}
+
+      {/* Debug Information */}
+      <details className="mt-8 p-4 bg-gray-100 rounded-lg">
+        <summary className="font-bold cursor-pointer">Debug Information</summary>
+        <pre className="mt-2 whitespace-pre-wrap">{debugInfo}</pre>
+      </details>
     </div>
   )
 }
