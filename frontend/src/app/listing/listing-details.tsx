@@ -315,9 +315,7 @@ export default function ListingDetails() {
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
       console.log('Submitting proof of delivery...')
-      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(list
-
-ingId)
+      const gasLimit = await marketContract.estimateGas.submitProofOfDelivery(listingId)
       const tx = await marketContract.submitProofOfDelivery(listingId, {
         gasLimit: gasLimit.mul(120).div(100)
       })
