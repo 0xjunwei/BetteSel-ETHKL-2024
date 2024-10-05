@@ -13,12 +13,14 @@ contract Market {
         // 0 = unsold, 1 = bid accepted, 2 = in dispute, 3 = sold and completed, 4 = cancelled, 5 = delivered awaiting buyer release
         uint8 listingStatus;
         address buyer;
+        string encryptedBuyerAddress;
         uint256 blockTimestampForDispute;
     }
 
     struct Bid {
         address bidder;
         uint256 bidAmount;
+        string encryptedBidderAddress;
     }
 
     // Admin mapping
@@ -98,6 +100,8 @@ contract Market {
             _ipfsLink,
             0,
             address(0),
+            // encryptedBuyerAddress (initially empty)
+            "",
             block.timestamp
         );
         emit ListingCreated(listingCount, msg.sender, _price);
@@ -151,7 +155,8 @@ contract Market {
     // Bid for Listing
     function bidForListing(
         uint256 _listingID,
-        uint256 _bidPrice
+        uint256 _bidPrice,
+        string memory _encryptedAddress
     ) public onlyAuthorized {
         // Check listing if unsold
         Listing storage userListing = listings[_listingID];
@@ -177,7 +182,9 @@ contract Market {
             // Check if the bidder has already placed a bid
             if (bidderIndex[_listingID][msg.sender] == 0) {
                 // New bidder, append their bid and map their index
-                listingBids[_listingID].push(Bid(msg.sender, _bidPrice));
+                listingBids[_listingID].push(
+                    Bid(msg.sender, _bidPrice, _encryptedAddress)
+                );
                 bidderIndex[_listingID][msg.sender] =
                     listingBids[_listingID].length -
                     1; // Map bidder to their index
@@ -193,7 +200,9 @@ contract Market {
             // Check if the bidder has already placed a bid
             if (bidderIndex[_listingID][msg.sender] == 0) {
                 // New bidder, append their bid and map their index
-                listingBids[_listingID].push(Bid(msg.sender, _bidPrice));
+                listingBids[_listingID].push(
+                    Bid(msg.sender, _bidPrice, _encryptedAddress)
+                );
                 bidderIndex[_listingID][msg.sender] =
                     listingBids[_listingID].length -
                     1; // Map bidder to their index
@@ -268,6 +277,8 @@ contract Market {
 
         // Set the buyer to the accepted bidder
         userListing.buyer = _bidder;
+        // move the encrypted address
+        userListing.encryptedBuyerAddress = bid.encryptedBidderAddress;
 
         // Update the block timestamp for the 14-day hold
         userListing.blockTimestampForDispute = block.timestamp + 14 days;
@@ -319,6 +330,44 @@ contract Market {
         // Mark the listing as delivered (status = 5)
         userListing.listingStatus = 5;
         // Seller can withdraw after 14 days if no dispute is made, sometimes buyers just lazy
+    }
+
+    // Withdraw funds after proof of delivery
+    function sellerWithdrawalNoDispute(
+        uint256 _listingID
+    ) public onlyAuthorized {
+        // Recognize i am not checking if msg.sender is the seller but hardcoded to fwd seller the funds, thus doesnt matter anyone can assist
+        // the seller in retrieving their payment (can be platform helps to send the seller their funds by calling this, removing the gas requirement by seller)
+        // Fetch the listing
+        Listing storage userListing = listings[_listingID];
+
+        // Ensure the listing status is 'delivered awaiting buyer release' (5)
+        require(
+            userListing.listingStatus == 5,
+            "Listing status must be 'delivered' (5)"
+        );
+
+        // Ensure the block timestamp has passed the dispute period
+        require(
+            block.timestamp > userListing.blockTimestampForDispute,
+            "Dispute period has not passed"
+        );
+        uint256 fee = (userListing.price * feeBPS) / 10000; // feeBPS is in basis points (e.g., 200 for 2%)
+
+        // Calculate the amount to be sent to the seller (price minus fee)
+        uint256 sellerAmount = userListing.price - fee;
+
+        // Transfer the funds to the seller
+        require(
+            USDCTOKEN.transfer(userListing.seller, sellerAmount),
+            "Transfer to seller failed"
+        );
+
+        // Update total fees collected
+        totalFeeCollected += fee;
+
+        // Mark the listing as completed (status = 3)
+        userListing.listingStatus = 3;
     }
 
     // Dispute

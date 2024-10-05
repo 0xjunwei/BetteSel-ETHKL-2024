@@ -44,6 +44,7 @@ contract MarketTest is Test {
             string memory ipfsLink,
             uint8 listingStatus,
             address buyer,
+            string memory encryptedBuyerAddress,
             uint256 blockTimestampForDispute
         ) = market.listings(0); // Access listing 0
 
@@ -67,7 +68,7 @@ contract MarketTest is Test {
         vm.prank(user2);
         usdcToken.approve(address(market), 100 * 10 ** 6);
         vm.prank(user2);
-        market.bidForListing(0, 100 * 10 ** 6);
+        market.bidForListing(0, 100 * 10 ** 6, "Test address");
 
         // Access the listing directly and compare the fields
         (
@@ -77,6 +78,7 @@ contract MarketTest is Test {
             string memory ipfsLink,
             uint8 listingStatus,
             address buyer,
+            string memory encryptedBuyerAddress,
             uint256 blockTimestampForDispute
         ) = market.listings(0); // Access listing 0
 
@@ -99,7 +101,7 @@ contract MarketTest is Test {
         vm.prank(user2);
         usdcToken.approve(address(market), 100 * 10 ** 6);
         vm.prank(user2);
-        market.bidForListing(0, 100 * 10 ** 6);
+        market.bidForListing(0, 100 * 10 ** 6, "Test address");
 
         // Access the listing directly and compare the fields
         (
@@ -109,6 +111,7 @@ contract MarketTest is Test {
             string memory ipfsLink,
             uint8 listingStatus,
             address buyer,
+            string memory encryptedBuyerAddress,
             uint256 blockTimestampForDispute
         ) = market.listings(0); // Access listing 0
 
@@ -118,6 +121,33 @@ contract MarketTest is Test {
         assertEq(buyer, address(0));
     }
 
+    // Test release payment from seller after bid accepted
+    function testReleasePayment() public {
+        // User1 creates a listing
+        vm.prank(user1);
+        market.addListing(100 * 10 ** 6, "ipfs://example_link");
+
+        // User2 approves the Market contract to spend their USDC
+        vm.prank(user2);
+        usdcToken.mint(user2, 100000 * 10 ** 6); // Mint 100000 USDC to user2
+        vm.prank(user2);
+        usdcToken.approve(address(market), 100 * 10 ** 6);
+        vm.prank(user2);
+        market.bidForListing(0, 100 * 10 ** 6, "Test address");
+
+        vm.prank(user2);
+        market.releasePaymentToSeller(0);
+        // Calculate the expected fee (2% of 100 USDC = 2 USDC)
+        uint256 expectedFee = (100 * 10 ** 6 * 200) / 10000; // 2% fee
+
+        // Validate totalFees after releasing payment
+        uint256 totalFeesAfter = market.totalFeeCollected();
+        assertEq(totalFeesAfter, expectedFee); // Total fee should now be 2 USDC
+
+        // Optional: validate the seller's balance if needed
+        uint256 sellerBalance = usdcToken.balanceOf(user1);
+        assertEq(sellerBalance, 98 * 10 ** 6); // Seller should receive 98 USDC after the 2% fee
+    }
     // Test cancelling a bid
 
     // Test raising a dispute
