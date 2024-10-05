@@ -2,7 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ["ethkl2024.infura-ipfs.io"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "ethkl2024.infura-ipfs.io",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
+  webpack: (config) => {
+    config.resolve.fallback = { fs: false, net: false, tls: false };
+    return config;
   },
 };
 
