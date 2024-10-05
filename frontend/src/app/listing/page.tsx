@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-const contractAddress = '0x3b2e82ac366B811fbA9e19484Bd7Dd586eB239Cc'
+const contractAddress = '0xeFd78e5913CfC7B50e4eD66AccaC8C59C15ab478'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
 const abi = [
