@@ -15,7 +15,7 @@ const contractAddress = '0xd17666935513E0bCa6e3194f119F402Fd5856A11'
 const usdcTokenAddress = '0x02b1E56b78923913C5628fD4a26B566941844d38'
 const rpcUrl = 'https://scroll-sepolia.chainstacklabs.com'
 
-const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"}]
+const abi = [{"type":"function","name":"listings","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"itemId","type":"uint256","internalType":"uint256"},{"name":"itemTitle","type":"string","internalType":"string"},{"name":"seller","type":"address","internalType":"address"},{"name":"price","type":"uint256","internalType":"uint256"},{"name":"ipfsLink","type":"string","internalType":"string"},{"name":"listingStatus","type":"uint8","internalType":"uint8"},{"name":"buyer","type":"address","internalType":"address"},{"name":"encryptedBuyerAddress","type":"string","internalType":"string"},{"name":"blockTimestampForDispute","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"bidForListing","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"},{"name":"_bidPrice","type":"uint256","internalType":"uint256"},{"name":"_encryptedAddress","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"walletToPublicKey","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"releasePaymentToSeller","inputs":[{"name":"_listingID","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}]
 
 const erc20Abi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
@@ -35,6 +35,18 @@ interface ListingType {
   blockTimestampForDispute: string;
 }
 
+const getStatusText = (status: number) => {
+  switch (status) {
+    case 0: return 'Unsold'
+    case 1: return 'Bid Accepted'
+    case 2: return 'In Dispute'
+    case 3: return 'Sold and Completed'
+    case 4: return 'Cancelled'
+    case 5: return 'Delivered Awaiting Buyer Release'
+    default: return 'Unknown'
+  }
+}
+
 export default function ListingDetails() {
   const [listing, setListing] = useState<ListingType | null>(null)
   const [bidAmount, setBidAmount] = useState('')
@@ -45,6 +57,7 @@ export default function ListingDetails() {
   const [imageLoading, setImageLoading] = useState(true)
   const [imageError, setImageError] = useState(false)
   const [sellerPublicKey, setSellerPublicKey] = useState('')
+  const [userAddress, setUserAddress] = useState('')
 
   const searchParams = useSearchParams()
   const listingId = searchParams ? searchParams.get('id') : null
@@ -62,7 +75,7 @@ export default function ListingDetails() {
           itemId: listingDetails.itemId.toString(),
           itemTitle: listingDetails.itemTitle,
           seller: listingDetails.seller,
-          price: ethers.utils.formatUnits(listingDetails.price, 6), // Format as USDC with 6 decimal places
+          price: ethers.utils.formatUnits(listingDetails.price, 6),
           ipfsLink: listingDetails.ipfsLink,
           listingStatus: listingDetails.listingStatus,
           buyer: listingDetails.buyer,
@@ -70,9 +83,15 @@ export default function ListingDetails() {
           blockTimestampForDispute: new Date(listingDetails.blockTimestampForDispute.toNumber() * 1000).toLocaleString()
         })
 
-        // Fetch seller's public key
         const sellerKey = await contract.walletToPublicKey(listingDetails.seller)
         setSellerPublicKey(sellerKey)
+
+        if (typeof window.ethereum !== 'undefined') {
+          const web3Provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
+          const signer = web3Provider.getSigner()
+          const address = await signer.getAddress()
+          setUserAddress(address)
+        }
       } catch (err) {
         setError('Failed to fetch listing details. Please try again.')
         console.error('Error fetching listing details:', err)
@@ -91,7 +110,7 @@ export default function ListingDetails() {
           setImageError(true)
           setImageLoading(false)
         }
-      }, 10000) // 10 seconds timeout
+      }, 10000)
 
       return () => clearTimeout(timer)
     }
@@ -118,20 +137,17 @@ export default function ListingDetails() {
       const usdcContract = new ethers.Contract(usdcTokenAddress, erc20Abi, signer)
       const marketContract = new ethers.Contract(contractAddress, abi, signer)
 
-      const bidAmountInUSDC = ethers.utils.parseUnits(bidAmount, 6) // Convert to USDC with 6 decimal places
+      const bidAmountInUSDC = ethers.utils.parseUnits(bidAmount, 6)
       const userAddress = await signer.getAddress()
 
-      // Check user's USDC balance
       const balance = await usdcContract.balanceOf(userAddress)
       if (balance.lt(bidAmountInUSDC)) {
         setError('Insufficient USDC balance. Please add more funds to your wallet.')
         return
       }
 
-      // Check current allowance
       const currentAllowance = await usdcContract.allowance(userAddress, contractAddress)
 
-      // If current allowance is less than bid amount, request approval
       if (currentAllowance.lt(bidAmountInUSDC)) {
         console.log('Requesting approval...')
         try {
@@ -145,11 +161,10 @@ export default function ListingDetails() {
         }
       }
 
-      // Place bid
       console.log('Placing bid...')
       const gasLimit = await marketContract.estimateGas.bidForListing(listing.itemId, bidAmountInUSDC, encryptedAddress)
       const tx = await marketContract.bidForListing(listing.itemId, bidAmountInUSDC, encryptedAddress, {
-        gasLimit: gasLimit.mul(120).div(100) // Add 20% buffer to the estimated gas limit
+        gasLimit: gasLimit.mul(120).div(100)
       })
       await tx.wait()
 
@@ -157,7 +172,6 @@ export default function ListingDetails() {
       setBidAmount('')
       setEncryptedAddress('')
       
-      // Refresh listing details after successful bid
       const updatedListing = await marketContract.listings(listingId)
       setListing({
         ...listing,
@@ -181,6 +195,61 @@ export default function ListingDetails() {
           } else {
             setError(`Failed to place bid: ${err.message}`)
           }
+        }
+      } else {
+        setError('An unknown error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReleasePayment = async () => {
+    if (!listing || !listingId) {
+      setError('Listing information is missing.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.')
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider)
+      await provider.send("eth_requestAccounts", [])
+      const signer = provider.getSigner()
+      const marketContract = new ethers.Contract(contractAddress, abi, signer)
+
+      console.log('Releasing payment...')
+      const gasLimit = await marketContract.estimateGas.releasePaymentToSeller(listingId)
+      const tx = await marketContract.releasePaymentToSeller(listingId, {
+        gasLimit: gasLimit.mul(120).div(100)
+      })
+      await tx.wait()
+
+      setSuccess('Payment released successfully!')
+      
+      const updatedListing = await marketContract.listings(listingId)
+      setListing({
+        ...listing,
+        listingStatus: updatedListing.listingStatus,
+      })
+    } catch (err: unknown) {
+      console.error('Error releasing payment:', err)
+      if (typeof err === 'object' && err !== null) {
+        if ('code' in err && typeof err.code === 'number') {
+          if (err.code === 4001) {
+            setError('Transaction was rejected by the user.')
+          } else if (err.code === -32603) {
+            setError('Internal error. Please try again.')
+          }
+        }
+        if ('message' in err && typeof err.message === 'string') {
+          setError(`Failed to release payment: ${err.message}`)
         }
       } else {
         setError('An unknown error occurred. Please try again.')
@@ -226,7 +295,7 @@ export default function ListingDetails() {
             <Label htmlFor="status">Status</Label>
             <Input 
               id="status" 
-              value={listing.listingStatus === 0 ? 'Active' : listing.listingStatus === 1 ? 'Pending Delivery' : 'Inactive'} 
+              value={getStatusText(listing.listingStatus)}
               readOnly 
             />
           </div>
@@ -312,6 +381,11 @@ export default function ListingDetails() {
         {listing.listingStatus === 0 && (
           <Button onClick={handleBid} disabled={loading}>
             {loading ? 'Placing Bid...' : 'Place Bid'}
+          </Button>
+        )}
+        {listing.listingStatus === 5 && listing.buyer.toLowerCase() === userAddress.toLowerCase() && (
+          <Button onClick={handleReleasePayment} disabled={loading}>
+            {loading ? 'Releasing Payment...' : 'Release Payment to Seller'}
           </Button>
         )}
       </CardFooter>
